@@ -1,4 +1,4 @@
-# ITSDTeamProject-0
+# IT Plus Team Project
 
 # How to download this project:
 Type the following in your terminal:
@@ -16,3 +16,4 @@ When your done editing your files, commit your changes to the repo by entering t
 git add .
 git commit -m "Brief description of your changes"
 git push -u origin
+
