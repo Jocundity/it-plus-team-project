@@ -1,6 +1,6 @@
 // @GENERATOR:play-routes-compiler
-// @SOURCE:/Users/jocelynsickler/Documents/ITSD-DT2025-26-Template/conf/routes
-// @DATE:Thu Feb 05 12:42:51 GMT 2026
+// @SOURCE:/Users/jocelynsickler/ITSD-DT2025-26-Template/conf/routes
+// @DATE:Fri Feb 20 20:15:17 GMT 2026
 
 import play.api.mvc.Call
 

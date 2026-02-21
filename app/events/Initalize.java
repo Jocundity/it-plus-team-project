@@ -3,9 +3,17 @@ package events;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import akka.actor.ActorRef;
+import commands.BasicCommands;
 import demo.CommandDemo;
 import demo.Loaders_2024_Check;
 import structures.GameState;
+import structures.basic.AIPlayer;
+import structures.basic.Avatar;
+import structures.basic.Player;
+import structures.basic.Tile;
+import structures.basic.Unit;
+import utils.BasicObjectBuilders;
+import utils.StaticConfFiles;
 
 /**
  * Indicates that both the core game loop in the browser is starting, meaning
@@ -28,8 +36,31 @@ public class Initalize implements EventProcessor{
 		
 		gameState.something = true;
 		
+		/* Creates new player objects,
+		 * sets initial health */
+		Player player1 = new Player();
+		player1.showLife(out);
+		AIPlayer player2 = new AIPlayer();
+		player2.showLife(out);
+		
+		/* Places avatars on the board in starting positions 
+		 * and sets initial health and attack*/
+		Avatar player1Avatar = new Avatar(player1, 1);
+		Tile tile1 = BasicObjectBuilders.loadTile(2, 3);
+		BasicCommands.drawTile(out, tile1, 0);
+		player1Avatar.drawUnit(out, tile1);
+		
+		Avatar player2Avatar = new Avatar(player2, 2);
+		Tile tile2 = BasicObjectBuilders.loadTile(8, 3);
+		BasicCommands.drawTile(out, tile2, 0);
+		player2Avatar.drawUnit(out, tile2);
+		
+
+		
+		
+		
 		// User 1 makes a change
-		CommandDemo.executeDemo(out); // this executes the command demo, comment out this when implementing your solution
+		//CommandDemo.executeDemo(out); // this executes the command demo, comment out this when implementing your solution
 		//Loaders_2024_Check.test(out);
 	}
 

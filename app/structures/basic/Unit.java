@@ -3,6 +3,11 @@ package structures.basic;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import commands.BasicCommands;
+import utils.BasicObjectBuilders;
+import utils.StaticConfFiles;
+import akka.actor.ActorRef;
+
 /**
  * This is a representation of a Unit on the game board.
  * A unit has a unique id (this is used by the front-end.
@@ -25,8 +30,19 @@ public class Unit {
 	Position position;
 	UnitAnimationSet animations;
 	ImageCorrection correction;
+	int health;
+	int attack;
+	String configFile;
 	
 	public Unit() {}
+	
+	public Unit(int id, String configFile, int health, int attack) {
+		this.id = id;
+		this.health = health;
+		this.attack = attack;
+		this.configFile = configFile;
+		
+	}
 	
 	public Unit(int id, UnitAnimationSet animations, ImageCorrection correction) {
 		super();
@@ -107,5 +123,19 @@ public class Unit {
 		position = new Position(tile.getXpos(),tile.getYpos(),tile.getTilex(),tile.getTiley());
 	}
 	
+	/* Draws a unit on a tile
+	and displays initial health and attack stats */
+	public void drawUnit(ActorRef out, Tile tile) {
+		Unit sprite = BasicObjectBuilders.loadUnit(configFile, id, Unit.class);
+		sprite.setPositionByTile(tile); 
+		BasicCommands.drawUnit(out, sprite, tile);
+		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+		
+		BasicCommands.setUnitHealth(out, sprite, this.health);
+		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+		
+		BasicCommands.setUnitAttack(out, sprite, this.attack);
+		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+	}
 	
 }
