@@ -25,6 +25,11 @@ public class AIPlayer extends Player {
 	@Override
 	public void showLife(ActorRef out) {
 		BasicCommands.setPlayer2Health(out, this);
+		try {Thread.sleep(200);} catch (InterruptedException e) {e.printStackTrace();}
 	}
-	
+	@Override
+	public void showMana(ActorRef out) {
+		BasicCommands.setPlayer2Mana(out, this);
+		try {Thread.sleep(200);} catch (InterruptedException e) {e.printStackTrace();}
+	}
 }

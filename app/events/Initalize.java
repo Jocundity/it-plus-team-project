@@ -38,19 +38,24 @@ public class Initalize implements EventProcessor{
 		
 		/* Creates new player objects,
 		 * sets initial health */
-		Player player1 = new Player();
-		player1.showLife(out);
-		AIPlayer player2 = new AIPlayer();
-		player2.showLife(out);
+		gameState.player1 = new Player();
+		gameState.player1.showLife(out);
+		gameState.player1.startTurn(out);
+
+		gameState.player2 = new AIPlayer();
+		gameState.player2.showLife(out);
+		gameState.player2.drainMana(out);
+
+		gameState.isPlayer1Turn = true;
 		
 		/* Places avatars on the board in starting positions 
 		 * and sets initial health and attack*/
-		Avatar player1Avatar = new Avatar(player1, 1);
+		Avatar player1Avatar = new Avatar(gameState.player1, 1);
 		Tile tile1 = BasicObjectBuilders.loadTile(2, 3);
 		BasicCommands.drawTile(out, tile1, 0);
 		player1Avatar.drawUnit(out, tile1);
 		
-		Avatar player2Avatar = new Avatar(player2, 2);
+		Avatar player2Avatar = new Avatar(gameState.player2, 2);
 		Tile tile2 = BasicObjectBuilders.loadTile(8, 3);
 		BasicCommands.drawTile(out, tile2, 0);
 		player2Avatar.drawUnit(out, tile2);
