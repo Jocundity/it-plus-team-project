@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="DisplayModuleName">
+    <option name="name" value="clone_3411-build" />
+  </component>
+  <component name="SbtModule">
+    <option name="buildForURI" value="file:$MODULE_DIR$/../../../" />
+    <option name="resolvers" value="$USER_HOME$/.ivy2/cache|ivy|true|Local cache" />
+  </component>
+</module>

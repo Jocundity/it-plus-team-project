@@ -11,6 +11,7 @@ public class GameState {
 
 	
 	public boolean gameInitalised = false;
+    public structures.basic.Player player1;
 	
 	public boolean something = false;
 	

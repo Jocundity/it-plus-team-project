@@ -16,16 +16,22 @@ public class Player {
 	int health;
 	int mana;
 	String avatarConfigFile;
+    private Deck deck;
+    private HandManager handManager;
 	
 	public Player() {
 		super();
 		this.health = 20;
 		this.mana = 0;
+        this.deck = new Deck();
+        this.handManager = new HandManager();
 	}
 	public Player(int health, int mana) {
 		super();
 		this.health = health;
 		this.mana = mana;
+        this.deck = new Deck();
+        this.handManager = new HandManager();
 	}
 	public int getHealth() {
 		return health;
@@ -50,7 +56,12 @@ public class Player {
 		BasicCommands.setPlayer1Health(out, this);
 		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
 	}
-	
+	public Deck getDeck() {
+		return deck;
+	}
+    public HandManager getHandManager() {
+        return handManager;
+    }
 	
 	
 }

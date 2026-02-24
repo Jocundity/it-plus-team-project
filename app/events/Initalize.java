@@ -2,6 +2,9 @@ package events;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.util.List;
+import structures.basic.Card;
+import utils.OrderedCardLoader;
 import akka.actor.ActorRef;
 import commands.BasicCommands;
 import demo.CommandDemo;
@@ -39,6 +42,7 @@ public class Initalize implements EventProcessor{
 		/* Creates new player objects,
 		 * sets initial health */
 		Player player1 = new Player();
+        gameState.player1 = player1;
 		player1.showLife(out);
 		AIPlayer player2 = new AIPlayer();
 		player2.showLife(out);
@@ -54,6 +58,24 @@ public class Initalize implements EventProcessor{
 		Tile tile2 = BasicObjectBuilders.loadTile(8, 3);
 		BasicCommands.drawTile(out, tile2, 0);
 		player2Avatar.drawUnit(out, tile2);
+
+        try {
+            List<Card> player1Deck = OrderedCardLoader.getPlayer1Cards(1);
+            player1.getDeck().setCards(player1Deck);
+
+            for (int i = 1; i <= 3; i++) {
+                Card drawnCard = player1.getDeck().drawTopCard();
+                if (drawnCard != null) {
+                    boolean added = player1.getHandManager().addCardToHand(drawnCard);
+                    if (added) {
+                        BasicCommands.drawCard(out, drawnCard, i, 0);
+                        Thread.sleep(200);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 		
 
 		
