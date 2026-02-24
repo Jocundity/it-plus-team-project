@@ -13,14 +13,16 @@ import utils.StaticConfFiles;
  */
 public class Player {
 
-	int health;
-	int mana;
-	String avatarConfigFile;
+	private int health;
+	private int mana;
+	private int turnNumber;
+	private String avatarConfigFile;
 	
 	public Player() {
 		super();
 		this.health = 20;
 		this.mana = 0;
+		this.turnNumber = 1;
 	}
 	public Player(int health, int mana) {
 		super();
@@ -39,6 +41,9 @@ public class Player {
 	public void setMana(int mana) {
 		this.mana = mana;
 	}
+	public int getTurnNumber() {
+		return turnNumber;
+	}
 	
 	// Gets the configuration file for the avatar placed on board
 	public String getAvatarConfigFile() {
@@ -48,9 +53,21 @@ public class Player {
 	// Show Life total (health) on screen 
 	public void showLife(ActorRef out) {
 		BasicCommands.setPlayer1Health(out, this);
-		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+		try {Thread.sleep(200);} catch (InterruptedException e) {e.printStackTrace();}
 	}
-	
-	
-	
+	// Show Mana on screen (left side)
+	public void showMana(ActorRef out) {
+		BasicCommands.setPlayer1Mana(out, this);
+		try {Thread.sleep(200);} catch (InterruptedException e) {e.printStackTrace();}
+	}
+	public void startTurn(ActorRef out) {
+
+		mana = turnNumber + 1; // turn1 -> 2, turn2 -> 3...
+		turnNumber++;
+		showMana(out);
+	}
+	public void drainMana(ActorRef out) {
+		mana = 0;
+		showMana(out);
+	}
 }
