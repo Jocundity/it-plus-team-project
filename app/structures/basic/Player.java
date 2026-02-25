@@ -17,7 +17,6 @@ public class Player {
     private int turnNumber;
     private String avatarConfigFile;
 
-    // 你加入的卡组和手牌管理
     private Deck deck;
     private HandManager handManager;
 
@@ -67,7 +66,6 @@ public class Player {
         showMana(out);
     }
 
-    // 你的 Get 方法
     public Deck getDeck() { return deck; }
     public HandManager getHandManager() { return handManager; }
 }
