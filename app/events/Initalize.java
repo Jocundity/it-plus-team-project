@@ -58,19 +58,16 @@ public class Initalize implements EventProcessor{
         player2Avatar.drawUnit(out, tile2);
 
         try {
-            List<Card> player1Deck = OrderedCardLoader.getPlayer1Cards(1);
-            gameState.player1.getDeck().setCards(player1Deck);
+            // Initialise both decks
+            gameState.player1.initDeck(OrderedCardLoader.getPlayer1Cards(1));
+            gameState.player2.initDeck(OrderedCardLoader.getPlayer2Cards(1));
 
-            for (int i = 1; i <= 3; i++) {
-                Card drawnCard = gameState.player1.getDeck().drawTopCard();
-                if (drawnCard != null) {
-                    boolean added = gameState.player1.getHandManager().addCardToHand(drawnCard);
-                    if (added) {
-                        BasicCommands.drawCard(out, drawnCard, i, 0);
-                        Thread.sleep(200);
-                    }
-                }
+            // Each player draws 3 starting cards
+            for (int i = 0; i < 3; i++) {
+                gameState.player1.drawCard(out);  // renders UI
+                gameState.player2.drawCard(out);  // logic only (no UI)
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
