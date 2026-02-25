@@ -58,6 +58,7 @@ public class Initalize implements EventProcessor{
         player2Avatar.drawUnit(out, tile2);
 
         try {
+<<<<<<< HEAD
             // Initialise both decks
             gameState.player1.initDeck(OrderedCardLoader.getPlayer1Cards(1));
             gameState.player2.initDeck(OrderedCardLoader.getPlayer2Cards(1));
@@ -66,12 +67,23 @@ public class Initalize implements EventProcessor{
             for (int i = 0; i < 3; i++) {
                 gameState.player1.drawCard(out);  // renders UI
                 gameState.player2.drawCard(out);  // logic only (no UI)
+=======
+            List<Card> player1Deck = OrderedCardLoader.getPlayer1Cards(1);
+            gameState.player1.getDeck().setCards(player1Deck);
+        
+            // hello this is a change
+            /* Story Card #2 (Over Draw):
+             * Refactored initialization drawing logic to use the unified drawCard method.
+             */
+            for (int i = 0; i < 3; i++) {
+                gameState.player1.drawCard(out);
+>>>>>>> origin/wangminxuan
             }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
-
+        
         // User 1 makes a change
         //CommandDemo.executeDemo(out);
         //Loaders_2024_Check.test(out);

@@ -19,7 +19,7 @@ public class Player {
     private int turnNumber;
     private String avatarConfigFile;
 
-    // 你加入的卡组和手牌管理
+    // deck and hand management
     private Deck deck;
     private HandManager handManager;
 
@@ -68,10 +68,42 @@ public class Player {
         mana = 0;
         showMana(out);
     }
+    
+ // hello this is a change
+    /**
+     * Story Card #2 (Over Draw): 
+     * Draws a card from the deck and attempts to add it to the hand.
+     * If the hand is full (6 cards), the HandManager rejects it,
+     * and the card is effectively deleted (lost).
+     */
+    public void drawCard(ActorRef out) {
+        // Draw a card from the top of the deck
+        Card drawnCard = deck.drawTopCard();
 
-    // 你的 Get 方法
+        if (drawnCard != null) {
+            // Attempt to add the card to the hand. HandManager automatically checks capacity.
+            boolean isAdded = handManager.addCardToHand(drawnCard);
+
+            if (isAdded) {
+                // Hand is not full, card successfully added. Render it to the frontend.
+                int handPosition = handManager.getHandCards().size();
+                BasicCommands.drawCard(out, drawnCard, handPosition, 0);
+                try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
+            } else {
+                // Hand is full (Over Draw), card is discarded
+                // Display a notification on the frontend to inform the player that the card is lost
+                BasicCommands.addPlayer1Notification(out, "Over Draw! Card Lost", 2);
+                try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
+            }
+        } else {
+            BasicCommands.addPlayer1Notification(out, "Deck is empty!", 2);
+        }
+    }
+    
+    // Get method
     public Deck getDeck() { return deck; }
     public HandManager getHandManager() { return handManager; }
+<<<<<<< HEAD
     // Initialise deck from a list of cards
 public void initDeck(List<Card> cards) {
     this.deck.setCards(cards);
@@ -92,3 +124,6 @@ public void drawCard(ActorRef out) {
 }
 
 }
+=======
+}
+>>>>>>> origin/wangminxuan
