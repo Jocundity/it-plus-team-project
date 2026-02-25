@@ -1,5 +1,7 @@
 package structures.basic;
 
+import structures.basic.Card;
+import java.util.List;
 import akka.actor.ActorRef;
 import commands.BasicCommands;
 import utils.StaticConfFiles;
@@ -70,4 +72,23 @@ public class Player {
     // 你的 Get 方法
     public Deck getDeck() { return deck; }
     public HandManager getHandManager() { return handManager; }
+    // Initialise deck from a list of cards
+public void initDeck(List<Card> cards) {
+    this.deck.setCards(cards);
+}
+
+// Draw a card from the top of the deck and render it in the player's hand
+public void drawCard(ActorRef out) {
+    Card drawn = deck.drawTopCard();
+    if (drawn == null) return;
+
+    boolean added = handManager.addCardToHand(drawn);
+    if (!added) return; // hand full -> discarded
+
+    int pos = handManager.getHandCards().size(); // 1..6
+    BasicCommands.drawCard(out, drawn, pos, 0);
+
+    try { Thread.sleep(200); } catch (InterruptedException e) { e.printStackTrace(); }
+}
+
 }
