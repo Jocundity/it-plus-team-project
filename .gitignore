@@ -1,0 +1,74 @@
+# ==== OS junk ====
+.DS_Store
+Thumbs.db
+
+# ==== Logs ====
+logs/
+*.log
+
+# ==== Build output ====
+target/
+project/target/
+
+# ==== sbt ====
+.sbt/
+.cache/
+
+# ==== node / web assets ====
+node_modules/
+project/node_modules/
+public/main/
+
+# ==== IDE ====
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+
+# ==== Play framework generated ====
+target/web/
+
+# sbt
+target/
+project/target/
+
+# Play framework
+logs/
+tmp/
+dist/
+
+# Eclipse
+.classpath
+.project
+.settings/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Mac
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Node/web assets
+node_modules/
+public/lib/
+
+# ===== Play / sbt =====
+target/
+project/target/
+project/project/
+logs/
+*.log
+
+# ===== OS垃圾 =====
+.DS_Store
+Thumbs.db
+
+# ===== IDE =====
+.idea/
+.vscode/
+*.iml
