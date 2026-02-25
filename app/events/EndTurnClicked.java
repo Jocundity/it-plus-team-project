@@ -17,38 +17,36 @@ public class EndTurnClicked implements EventProcessor {
 
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
+
         if (gameState.player1 == null || gameState.player2 == null) {
+            // Safety guard: if initialise hasn't run yet, do nothing.
             return;
         }
 
         if (gameState.isPlayer1Turn) {
+            // Player 1 ends turn
             gameState.player1.drainMana(out);
+
+            // Switch to Player 2
             gameState.isPlayer1Turn = false;
             gameState.player2.startTurn(out);
-        }
-        else {
+
+            // Player 2 draws 1 card (logic only)
+            gameState.player2.drawCard(out);
+        } else {
+            // Player 2 ends turn
             gameState.player2.drainMana(out);
+
+            // Switch to Player 1
             gameState.isPlayer1Turn = true;
             gameState.player1.startTurn(out);
+
+            // Player 1 draws 1 card (rendered)
+            gameState.player1.drawCard(out);
         }
 
+        // Refresh mana display on both sides
         gameState.player1.showMana(out);
         gameState.player2.showMana(out);
-
-        Player player = gameState.player1;
-        Card drawnCard = player.getDeck().drawTopCard();
-
-        if (drawnCard != null) {
-            boolean added = player.getHandManager().addCardToHand(drawnCard);
-
-            if (added) {
-                int handPosition = player.getHandManager().getHandCards().size();
-                BasicCommands.drawCard(out, drawnCard, handPosition, 0);
-            } else {
-                BasicCommands.addPlayer1Notification(out, "Hand is full! Card discarded.", 2);
-            }
-        } else {
-            BasicCommands.addPlayer1Notification(out, "Deck is empty!", 2);
-        }
     }
 }
