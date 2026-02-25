@@ -1,49 +1,46 @@
 package events;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
 import akka.actor.ActorRef;
+import commands.BasicCommands;
 import structures.GameState;
+import structures.basic.Card;
+import structures.basic.Player;
 
 /**
  * Indicates that the user has clicked an object on the game canvas, in this case
  * the end-turn button.
- * 
- * { 
- *   messageType = “endTurnClicked”
- * }
- * 
- * @author Dr. Richard McCreadie
  *
+ * @author Dr. Richard McCreadie
  */
-public class EndTurnClicked implements EventProcessor{
+public class EndTurnClicked implements EventProcessor {
 
-	@Override
-	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-		if (gameState.player1 == null || gameState.player2 == null) {
-			// Safety guard: if initialise hasn't run yet, do nothing.
-			return;
-		}
-		if (gameState.isPlayer1Turn) {
-			// #5: End turn drains remaining mana
-			gameState.player1.drainMana(out);
+    @Override
+    public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
+        if (gameState.player1 == null || gameState.player2 == null) {
+            return;
+        }
 
-			// switch turn
-			gameState.isPlayer1Turn = false;
+        if (gameState.isPlayer1Turn) {
+            gameState.player1.drainMana(out);
+            gameState.isPlayer1Turn = false;
+            gameState.player2.startTurn(out);
+        }
+        else {
+            gameState.player2.drainMana(out);
+            gameState.isPlayer1Turn = true;
+            gameState.player1.startTurn(out);
+        }
 
-			// #4: Start of turn grants mana = turnNumber + 1
-			gameState.player2.startTurn(out);
-		}
-		else {
-			gameState.player2.drainMana(out);
-			gameState.isPlayer1Turn = true;
-			gameState.player1.startTurn(out);
-		}
-		// Forcibly refresh the mana display on both sides to 
-		// solve the problem of "delaying one beat" (click the EndTurn 
-		// button once to update only the mana value on one side, not the mana value on both sides).
-		gameState.player1.showMana(out);
-		gameState.player2.showMana(out);
-	}
+        gameState.player1.showMana(out);
+        gameState.player2.showMana(out);
 
+     // hello this is a change
+        /* Story Card #2 (Over Draw):
+         * Refactored drawing logic to use the encapsulated drawCard method inside Player.
+         * This ensures all Over Draw rules and UI notifications are handled in one place.
+         */
+        Player player = gameState.player1;
+        player.drawCard(out);
+    }
 }
