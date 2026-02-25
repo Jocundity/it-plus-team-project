@@ -4,6 +4,10 @@ import akka.actor.ActorRef;
 import commands.BasicCommands;
 import utils.StaticConfFiles;
 
+// hello this is a change
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * A basic representation of of the Player. A player
  * has health and mana.
@@ -18,16 +22,29 @@ public class Player {
 	private int turnNumber;
 	private String avatarConfigFile;
 	
+	// hello this is a change
+    public List<Card> hand;
+	public List<Card> deck;
+		
 	public Player() {
 		super();
 		this.health = 20;
 		this.mana = 0;
 		this.turnNumber = 1;
+		
+		// hello this is a change
+				this.hand = new ArrayList<>();
+				this.deck = new ArrayList<>();
 	}
+	
 	public Player(int health, int mana) {
 		super();
 		this.health = health;
 		this.mana = mana;
+		
+		// hello this is a change
+		this.hand = new ArrayList<>();
+		this.deck = new ArrayList<>();
 	}
 	public int getHealth() {
 		return health;
@@ -69,5 +86,25 @@ public class Player {
 	public void drainMana(ActorRef out) {
 		mana = 0;
 		showMana(out);
+	}
+	
+	// hello this is a change
+		/**
+		 * Draws a card from the top of the deck. 
+		 * If the hand already has 6 cards, the drawn card is deleted (lost).
+		 */
+	    public void drawCard() {
+	    	// Ensure the deck is not empty before drawing
+	    	if (deck != null && !deck.isEmpty()) {
+	    		// Remove the first card from the deck (simulating drawing the top card)
+			    Card drawnCard = deck.remove(0); 
+			
+			    // Check if hand is full
+			    if (hand.size() < 6) {
+			    	hand.add(drawnCard); // Normal draw: add to hand
+			    	} 
+			        // If hand.size() >= 6, we do NOT add the card to the hand.
+			        // Since we already removed it from the deck, the card is now lost/deleted.
+		}
 	}
 }
