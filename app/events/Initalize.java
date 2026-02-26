@@ -24,17 +24,16 @@ import utils.StaticConfFiles;
  *
  * @author Dr. Richard McCreadie
  */
-public class Initalize implements EventProcessor{
+public class Initalize implements EventProcessor {
 
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-        // hello this is a change
 
         gameState.gameInitalised = true;
         gameState.something = true;
 
         /* Creates new player objects,
-         * sets initial health and mana (Teammate's logic) */
+         * sets initial health and mana */
         gameState.player1 = new Player();
         gameState.player1.showLife(out);
         gameState.player1.startTurn(out);
@@ -45,8 +44,7 @@ public class Initalize implements EventProcessor{
 
         gameState.isPlayer1Turn = true;
 
-        /* Places avatars on the board in starting positions
-         * and sets initial health and attack*/
+        /* Places avatars on the board in starting positions */
         Avatar player1Avatar = new Avatar(gameState.player1, 1);
         Tile tile1 = BasicObjectBuilders.loadTile(2, 3);
         BasicCommands.drawTile(out, tile1, 0);
@@ -58,26 +56,23 @@ public class Initalize implements EventProcessor{
         player2Avatar.drawUnit(out, tile2);
 
         try {
+            // Initialise both decks
             List<Card> player1Deck = OrderedCardLoader.getPlayer1Cards(1);
-            gameState.player1.getDeck().setCards(player1Deck);
+            List<Card> player2Deck = OrderedCardLoader.getPlayer2Cards(1);
+            gameState.player1.initDeck(player1Deck);
+            gameState.player2.initDeck(player2Deck);
 
-            for (int i = 1; i <= 3; i++) {
-                Card drawnCard = gameState.player1.getDeck().drawTopCard();
-                if (drawnCard != null) {
-                    boolean added = gameState.player1.getHandManager().addCardToHand(drawnCard);
-                    if (added) {
-                        BasicCommands.drawCard(out, drawnCard, i, 0);
-                        Thread.sleep(200);
-                    }
-                }
+            // Each player draws 3 starting cards
+            for (int i = 0; i < 3; i++) {
+                gameState.player1.drawCard(out);
+                gameState.player2.drawCard(out);
             }
+
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        // User 1 makes a change
         //CommandDemo.executeDemo(out);
         //Loaders_2024_Check.test(out);
     }
-
 }
