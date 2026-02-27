@@ -10,6 +10,7 @@ import demo.Loaders_2024_Check;
 import structures.GameState;
 import structures.basic.AIPlayer;
 import structures.basic.Avatar;
+import structures.basic.Board;
 import structures.basic.Card;
 import structures.basic.Player;
 import structures.basic.Tile;
@@ -31,9 +32,13 @@ public class Initalize implements EventProcessor {
 
         gameState.gameInitalised = true;
         gameState.something = true;
+        
+        /* Create game board */
+        gameState.board = new Board();
+        gameState.board.drawBoard(out);
 
         /* Creates new player objects,
-         * sets initial health and mana */
+         * sets initial health and mana (Story card 3) */
         gameState.player1 = new Player();
         gameState.player1.showLife(out);
         gameState.player1.startTurn(out);
@@ -46,14 +51,16 @@ public class Initalize implements EventProcessor {
 
         /* Places avatars on the board in starting positions */
         Avatar player1Avatar = new Avatar(gameState.player1, 1);
-        Tile tile1 = BasicObjectBuilders.loadTile(2, 3);
+        Tile tile1 = gameState.board.getTile(2, 3);
         BasicCommands.drawTile(out, tile1, 0);
         player1Avatar.drawUnit(out, tile1);
+        tile1.setUnit(player1Avatar);
 
         Avatar player2Avatar = new Avatar(gameState.player2, 2);
-        Tile tile2 = BasicObjectBuilders.loadTile(8, 3);
+        Tile tile2 = gameState.board.getTile(8, 3);
         BasicCommands.drawTile(out, tile2, 0);
         player2Avatar.drawUnit(out, tile2);
+        tile2.setUnit(player2Avatar);
 
         try {
             // Initialise both decks

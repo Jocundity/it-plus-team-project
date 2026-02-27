@@ -4,7 +4,11 @@ package events;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import akka.actor.ActorRef;
+import commands.BasicCommands;
 import structures.GameState;
+import structures.basic.HighlightManager;
+import structures.basic.Tile;
+import structures.basic.Unit;
 
 /**
  * Indicates that the user has clicked an object on the game canvas, in this case a tile.
@@ -28,8 +32,39 @@ public class TileClicked implements EventProcessor{
 		int tilex = message.get("tilex").asInt();
 		int tiley = message.get("tiley").asInt();
 		
-		if (gameState.something == true) {
-			// do some logic
+		BasicCommands.addPlayer1Notification(out, "Clicked: " + tilex + "," + tiley, 2);
+		
+		if ((tilex >= 1 && tilex <= 9) && (tiley >=1 && tiley <= 5)) {
+			Tile clickedTile = gameState.board.getTile(tilex, tiley);
+			
+			if (clickedTile != null) {
+				
+				
+				// (Story card 8) clear highlights
+				gameState.highlightManager.clearHighlights(clickedTile, out);
+				
+				/* (Story card 6) 
+				 Highlight tiles if player clicks on unit who 
+				 hasn't moved on attacked yet */
+				if (clickedTile.hasUnit()) {
+					Unit unitOnTile = clickedTile.getUnit();
+					if (unitOnTile.getPlayer() == gameState.player1 && 
+							unitOnTile.getCanMove() && unitOnTile.getCanAttack()) {
+						gameState.highlightManager.highlightMovementRange(clickedTile, gameState, out);
+						
+						
+						
+		
+					}
+					
+					
+				}
+					
+					
+				
+			}
+			
+			
 		}
 		
 	}
