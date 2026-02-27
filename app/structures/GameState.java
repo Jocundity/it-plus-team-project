@@ -1,7 +1,14 @@
 package structures;
 
-import structures.basic.AIPlayer;
 import structures.basic.Player;
+import structures.basic.AIPlayer;
+import structures.basic.Tile;
+import structures.basic.Board;
+import structures.basic.HighlightManager;
+
+import java.util.List;
+
+import commands.BasicCommands;
 
 /**
  * This class can be used to hold information about the on-going game.
@@ -21,4 +28,13 @@ public class GameState {
 
     // true = Player 1's turn, false = Player 2's turn
     public boolean isPlayer1Turn = true;
+    
+    // add board
+    public Board board;
+    
+    // add highlight manager for board
+    public HighlightManager highlightManager = new HighlightManager();
+    
+		
+    
 }

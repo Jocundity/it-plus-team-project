@@ -4,7 +4,7 @@ public class Avatar extends Unit {
 	Player player;
 
 	public Avatar(Player player, int id) {
-		super(id, player.getAvatarConfigFile(), player.getHealth(), 2);
+		super(id, player.getAvatarConfigFile(), player.getHealth(), 2, player);
 		this.player = player;
 		
 	}

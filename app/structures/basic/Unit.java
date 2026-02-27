@@ -33,14 +33,19 @@ public class Unit {
 	int health;
 	int attack;
 	String configFile;
+	Tile tile;
+	boolean canMove = true;
+	boolean canAttack = true;
+	Player player;
 	
 	public Unit() {}
 	
-	public Unit(int id, String configFile, int health, int attack) {
+	public Unit(int id, String configFile, int health, int attack, Player player) {
 		this.id = id;
 		this.health = health;
 		this.attack = attack;
 		this.configFile = configFile;
+		this.player = player;
 		
 	}
 	
@@ -125,17 +130,46 @@ public class Unit {
 	
 	/* Draws a unit on a tile
 	and displays initial health and attack stats */
-	public void drawUnit(ActorRef out, Tile tile) {
+	public void drawUnit(ActorRef out, Tile tile) {	
 		Unit sprite = BasicObjectBuilders.loadUnit(configFile, id, Unit.class);
+		this.tile = tile;
+		tile.setUnit(sprite);
 		sprite.setPositionByTile(tile); 
 		BasicCommands.drawUnit(out, sprite, tile);
-		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 		
 		BasicCommands.setUnitHealth(out, sprite, this.health);
-		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 		
 		BasicCommands.setUnitAttack(out, sprite, this.attack);
-		try {Thread.sleep(2000);} catch (InterruptedException e) {e.printStackTrace();}
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}	
 	}
+	
+	// Getters and setters for player 
+	public Player getPlayer() {
+		return player;
+	}
+	
+	public void setPlayer(Player player) {
+		this.player = player;
+	}
+	
+	// Getters and setters for canMove 
+		public boolean getCanMove() {
+			return canMove;
+		}
+		
+		public void setCanMove(boolean val) {
+			this.canMove = val;
+		}
+		
+		// Getters and setters for canAttack 
+				public boolean getCanAttack() {
+					return canAttack;
+				}
+				
+				public void setCanAttack(boolean val) {
+					this.canAttack = val;
+				}
 	
 }

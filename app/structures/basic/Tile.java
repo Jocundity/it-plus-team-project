@@ -7,6 +7,8 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import structures.basic.Unit;
+
 /**
  * A basic representation of a tile on the game board. Tiles have both a pixel position
  * and a grid position. Tiles also have a width and height in pixels and a series of urls
@@ -27,6 +29,7 @@ public class Tile {
 	int height;
 	int tilex;
 	int tiley;
+	private Unit unit;
 	
 	public Tile() {}
 	
@@ -112,6 +115,22 @@ public class Tile {
 		}
 		return null;
 		
+	}
+	
+	
+	// Assign a unit to a tile
+	public void setUnit(Unit unit) {
+		this.unit = unit;
+	}
+	
+	// Check if there is a unit on the tile
+	public boolean hasUnit() {
+		return unit != null;
+	}
+	
+	// Get the unit on the tile
+	public Unit getUnit() {
+		return unit;
 	}
 	
 	
