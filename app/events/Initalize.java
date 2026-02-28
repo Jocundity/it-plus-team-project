@@ -52,15 +52,24 @@ public class Initalize implements EventProcessor {
         /* Places avatars on the board in starting positions */
         Avatar player1Avatar = new Avatar(gameState.player1, 1);
         Tile tile1 = gameState.board.getTile(2, 3);
+        tile1.setUnit(player1Avatar);
+        player1Avatar.setPositionByTile(tile1);
+        
+        // Set the avatar's canMove and canAttack to true at the start of the game for testing purposes
+        player1Avatar.setPlayer(gameState.player1);
+        player1Avatar.setCanMove(true);
+        player1Avatar.setCanAttack(true);
+
         BasicCommands.drawTile(out, tile1, 0);
         player1Avatar.drawUnit(out, tile1);
-        tile1.setUnit(player1Avatar);
+        
 
         Avatar player2Avatar = new Avatar(gameState.player2, 2);
         Tile tile2 = gameState.board.getTile(8, 3);
+        tile2.setUnit(player2Avatar);
+        player2Avatar.setPositionByTile(tile2);
         BasicCommands.drawTile(out, tile2, 0);
         player2Avatar.drawUnit(out, tile2);
-        tile2.setUnit(player2Avatar);
 
         try {
             // Initialise both decks

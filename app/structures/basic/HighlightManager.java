@@ -58,21 +58,25 @@ public class HighlightManager {
 		
 		if (leftClose != null && !leftClose.hasUnit()) {
 			BasicCommands.drawTile(out, leftClose, 1);
+			targetTiles.add(leftClose);
 			try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 			
 			// Only highlight far tile if there is no unit on close tile
 			if (leftFar!= null && !leftFar.hasUnit()) {
 				BasicCommands.drawTile(out, leftFar, 1);
+				targetTiles.add(leftFar);
 				try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 			}
 		}
 		
 		if (rightClose != null && !rightClose.hasUnit()) {
 			BasicCommands.drawTile(out, rightClose, 1);
+			targetTiles.add(rightClose);
 			try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 			
 			if (rightFar!= null && !rightFar.hasUnit()) {
 				BasicCommands.drawTile(out, rightFar, 1);
+				targetTiles.add(rightFar);
 				try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 			}
 		}
@@ -85,27 +89,30 @@ public class HighlightManager {
 				
 				if (topClose != null && !topClose.hasUnit()) {
 					BasicCommands.drawTile(out, topClose, 1);
+					targetTiles.add(topClose);
 					try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 					
 					// Only highlight far tile if there is no unit on close tile
 					if (topFar!= null && !topFar.hasUnit()) {
 						BasicCommands.drawTile(out, topFar, 1);
+						targetTiles.add(topFar);
 						try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 					}
 				}
 				
 				if (bottomClose != null && !bottomClose.hasUnit()) {
 					BasicCommands.drawTile(out, bottomClose, 1);
+					targetTiles.add(bottomClose);
 					try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 					
 					if (bottomFar!= null && !bottomFar.hasUnit()) {
 						BasicCommands.drawTile(out, bottomFar, 1);
+						targetTiles.add(bottomFar);
 						try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 					}
 				}
 				
-				Collections.addAll(targetTiles, leftClose, leftFar, rightClose, rightFar,
-						topClose, topFar, bottomClose, bottomFar);
+				
 				
 	}
 	
@@ -114,12 +121,15 @@ public class HighlightManager {
 	public void clearHighlights(Tile tile, ActorRef out) {
 		if (targetTiles.contains(tile)) {
 			for (Tile t : targetTiles) {
-				BasicCommands.drawTile(out, t, 0);
+				if (t != null) {
+					BasicCommands.drawTile(out, t, 0);
+				}
 			}
 			targetTiles.clear();
 		}
 			
 	}
+	
 	
 	
 		
