@@ -59,13 +59,15 @@ public class Initalize implements EventProcessor {
         player1Avatar.setPlayer(gameState.player1);
         player1Avatar.setCanMove(true);
         player1Avatar.setCanAttack(true);
+        
 
         BasicCommands.drawTile(out, tile1, 0);
         player1Avatar.drawUnit(out, tile1);
         
 
         Avatar player2Avatar = new Avatar(gameState.player2, 2);
-        Tile tile2 = gameState.board.getTile(8, 3);
+        Tile tile2 = gameState.board.getTile(8, 3);    
+        player2Avatar.setPlayer(gameState.player2);
         tile2.setUnit(player2Avatar);
         player2Avatar.setPositionByTile(tile2);
         BasicCommands.drawTile(out, tile2, 0);
