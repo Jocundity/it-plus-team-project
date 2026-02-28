@@ -5,7 +5,7 @@ import commands.BasicCommands;
 import structures.GameState;
 import java.util.ArrayList;
 import java.util.Collections;
-
+import structures.basic.Unit;
 
 public class HighlightManager {
 	
@@ -24,7 +24,7 @@ public class HighlightManager {
 		
 		ArrayList<Tile> diagonalTiles = new ArrayList<Tile>();		
 		for (int x = 1; x <= 9; x++) {
-			for (int y = 1; y <= 9; y++) {
+			for (int y = 1; y <= 5; y++) {
 				// get distance between unit tile and other board tiles
 				int distx = Math.abs(unitx - x);
 				int disty = Math.abs(unity - y);
@@ -113,13 +113,44 @@ public class HighlightManager {
 				}
 				
 				
-				
+			
 	}
-	
-	
-	// Reverts Board back to default state (Story card 8)
+	// (Story card 7) highlight adjacent enemy units in RED
+public void highlightAttackTargets(Tile unitTile, GameState gameState, ActorRef out) {
+
+    if (unitTile == null || !unitTile.hasUnit()) return;
+
+    Unit attacker = unitTile.getUnit();
+
+    // only highlight for human player's units, and only if canAttack
+    if (attacker.getPlayer() != gameState.player1) return;
+    if (!attacker.getCanAttack()) return;
+
+    int x = unitTile.getTilex();
+    int y = unitTile.getTiley();
+
+    // 4-adjacent tiles
+    Tile[] adj = new Tile[] {
+        gameState.board.getTile(x - 1, y),
+        gameState.board.getTile(x + 1, y),
+        gameState.board.getTile(x, y - 1),
+        gameState.board.getTile(x, y + 1)
+    };
+
+    for (Tile t : adj) {
+        if (t == null) continue;
+
+        // only highlight if there is an enemy unit on that tile
+        if (t.hasUnit() && t.getUnit().getPlayer() != gameState.player1) {
+            BasicCommands.drawTile(out, t, 2); // try 2 as "red"
+            try { Thread.sleep(50); } catch (Exception e) {}
+            targetTiles.add(t);
+        }
+    }
+}
+		// Reverts Board back to default state (Story card 8) [FIXED]
 	public void clearHighlights(Tile tile, ActorRef out) {
-		if (targetTiles.contains(tile)) {
+		// Always clear whatever was highlighted before
 			for (Tile t : targetTiles) {
 				if (t != null) {
 					BasicCommands.drawTile(out, t, 0);
@@ -128,7 +159,7 @@ public class HighlightManager {
 			targetTiles.clear();
 		}
 			
-	}
+	
 	
 	
 	

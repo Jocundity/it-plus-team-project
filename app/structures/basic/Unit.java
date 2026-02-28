@@ -118,6 +118,21 @@ public class Unit {
 		this.animations = animations;
 	}
 	
+	public int getHealth() {
+    	return health;
+	}
+
+	public void setHealth(int health) {
+    	this.health = health;
+	}
+	
+	public int getAttack() {
+    	return attack;
+	}
+
+	public void setAttack(int attack) {
+    	this.attack = attack;
+	}
 	/**
 	 * This command sets the position of the Unit to a specified
 	 * tile.
