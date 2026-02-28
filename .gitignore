@@ -72,3 +72,7 @@ Thumbs.db
 .idea/
 .vscode/
 *.iml
+
+# --- Local / accidental dependency cache (should never be tracked) ---
+null/
+**/Coursier/
