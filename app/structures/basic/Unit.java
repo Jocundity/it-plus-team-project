@@ -142,7 +142,12 @@ public class Unit {
 		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 		
 		BasicCommands.setUnitAttack(out, sprite, this.attack);
-		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}	
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
+		
+		tile.setUnit(this);
+        this.setPositionByTile(tile);
+        this.setAnimations(sprite.getAnimations());
+        this.setCorrection(sprite.getCorrection());
 	}
 	
 	// Getters and setters for player 

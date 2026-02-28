@@ -35,6 +35,8 @@ public class GameState {
     // add highlight manager for board
     public HighlightManager highlightManager = new HighlightManager();
     
+    // record the selected tile for the player
+    public Tile selectedTile = null;
 		
     
 }
