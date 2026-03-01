@@ -1,6 +1,5 @@
 package events;
 
-
 import com.fasterxml.jackson.databind.JsonNode;
 
 import akka.actor.ActorRef;
@@ -10,218 +9,218 @@ import structures.basic.UnitAnimationType;
 import structures.basic.Tile;
 import structures.basic.Unit;
 
-/**
- * Indicates that the user has clicked an object on the game canvas, in this case a tile.
- * The event returns the x (horizontal) and y (vertical) indices of the tile that was
- * clicked. Tile indices start at 1.
- * 
- * { 
- *   messageType = "tileClicked"
- *   tilex = <x index of the tile>
- *   tiley = <y index of the tile>
- * }
- * 
- * @author Dr. Richard McCreadie
- *
- */
-public class TileClicked implements EventProcessor{
+public class TileClicked implements EventProcessor {
 
-	@Override
-	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-        // get the x and y indices of the tile that was clicked
-		int tilex = message.get("tilex").asInt();
-		int tiley = message.get("tiley").asInt();
+    @Override
+    public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
 
-		Tile clickedTile = gameState.board.getTile(tilex, tiley);
-		if (clickedTile == null) return;
+        int tilex = message.get("tilex").asInt();
+        int tiley = message.get("tiley").asInt();
 
-        // Optional debug
-        BasicCommands.addPlayer1Notification(out, "Clicked: " + tilex + ", " + tiley + ",", 2);
-        
-        // (Story card 9) If selected unit can attack, and click adjacent enemy -> attack
-        if (gameState.selectedTile != null && gameState.selectedTile.hasUnit() && clickedTile.hasUnit()) {
+        Tile clickedTile = gameState.board.getTile(tilex, tiley);
+        if (clickedTile == null) return;
+
+        BasicCommands.addPlayer1Notification(out, "Clicked: " + tilex + ", " + tiley, 2);
+
+        // =========================
+        // (Story Card 9) Adjacent Attack
+        // =========================
+        if (gameState.selectedTile != null &&
+            gameState.selectedTile.hasUnit() &&
+            clickedTile.hasUnit()) {
 
             Tile attackerTile = gameState.selectedTile;
             Unit attacker = attackerTile.getUnit();
             Unit target = clickedTile.getUnit();
 
             boolean enemy = (target.getPlayer() != attacker.getPlayer());
-            int dx = Math.abs(clickedTile.getTilex() - attackerTile.getTilex());
-            int dy = Math.abs(clickedTile.getTiley() - attackerTile.getTiley());
-            boolean adjacent = (dx + dy == 1);
+            boolean adjacent = isAdjacent8(attackerTile, clickedTile);
 
             if (enemy && adjacent && attacker.getCanAttack()) {
 
-                // clear old highlights
                 gameState.highlightManager.clearHighlights(clickedTile, out);
 
-                // play attack animation
                 int ms = BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
-                try {Thread.sleep(ms);} catch (InterruptedException e) {e.printStackTrace();}
+                try { Thread.sleep(ms); } catch (Exception e) {}
 
-                // damage
-                int newHealth = target.getHealth() - attacker.getAttack();
-                target.setHealth(newHealth);
+                boolean targetDied = applyDamageAndHandleDeath(out, clickedTile, target, attacker.getAttack());
 
-                // update UI
-                BasicCommands.setUnitHealth(out, target, Math.max(newHealth, 0));
-                try {Thread.sleep(150);} catch (InterruptedException e) {e.printStackTrace();}
-
-                // if dead -> delete
-                if (newHealth <= 0) {
-                    BasicCommands.playUnitAnimation(out, target, UnitAnimationType.death);
-                    try {Thread.sleep(300);} catch (InterruptedException e) {e.printStackTrace();}
-                    BasicCommands.deleteUnit(out, target);
-                    clickedTile.setUnit(null);
+                // (Story Card 12) Counterattack
+                if (!targetDied) {
+                    tryCounterAttackOnce(out, attackerTile, attacker, clickedTile, target);
                 }
 
-                // mark attacker has attacked
                 attacker.setCanAttack(false);
-                
-                // hello, this is a change: Lock movement after an attack
                 attacker.setCanMove(false);
-
-                // end selection after attack
                 gameState.selectedTile = null;
                 return;
             }
-            // (Story Card 10) Move and Attack combo for non-adjacent enemies
-            else if (enemy && !adjacent && attacker.getCanAttack()) {
-                
+
+            // =========================
+            // (Story Card 10) Move + Attack
+            // =========================
+            else if (enemy && attacker.getCanAttack()) {
+
                 Tile landingTile = null;
-                
                 int minDistance = 999;
-                
-                // 1. Find a valid landing tile: check the 4 adjacent tiles around the target enemy
-                int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+
+                int[][] directions = {{0,1},{0,-1},{1,0},{-1,0}};
                 for (int[] dir : directions) {
-                    int checkX = clickedTile.getTilex() + dir[0];
-                    int checkY = clickedTile.getTiley() + dir[1];
-                    
-                    // Get the tile at these coordinates (returns null if out of bounds)
-                    Tile adjacentToTarget = gameState.board.getTile(checkX, checkY);
-                    
-                    // If the tile exists and is empty (no other unit standing there)
-                    if (adjacentToTarget != null && !adjacentToTarget.hasUnit()) {
-                    	
-                    	// Check if this empty tile is within the attacker's movement range
-                        int moveDx = Math.abs(adjacentToTarget.getTilex() - attackerTile.getTilex());
-                        int moveDy = Math.abs(adjacentToTarget.getTiley() - attackerTile.getTiley());
-                        
-                        if (moveDx <= 2 && moveDy <= 2) {
-                        	//Replaced the basic break with distance calculation
-                        	int distFromAttacker = moveDx + moveDy;
-                            if (distFromAttacker < minDistance) {
-                                minDistance = distFromAttacker;
-                                landingTile = adjacentToTarget;
+                    Tile candidate = gameState.board.getTile(
+                        clickedTile.getTilex() + dir[0],
+                        clickedTile.getTiley() + dir[1]);
+
+                    if (candidate != null && !candidate.hasUnit()) {
+
+                        int dx = Math.abs(candidate.getTilex() - attackerTile.getTilex());
+                        int dy = Math.abs(candidate.getTiley() - attackerTile.getTiley());
+
+                        if (dx <= 2 && dy <= 2) {
+                            int dist = dx + dy;
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                landingTile = candidate;
                             }
                         }
                     }
                 }
-                
-                // 2. If a valid landing tile is found, execute the Move + Attack combo
+
                 if (landingTile != null) {
-                    
-                    // Clear highlights before action
+
                     gameState.highlightManager.clearHighlights(clickedTile, out);
-                    
-                    // [Action 1: Move]
-                    commands.BasicCommands.moveUnitToTile(out, attacker, landingTile);
-                    
-                    // Update backend board state
+
+                    BasicCommands.moveUnitToTile(out, attacker, landingTile);
+
                     landingTile.setUnit(attacker);
                     attackerTile.setUnit(null);
                     attacker.setPositionByTile(landingTile);
-                    
-                    // VERY IMPORTANT: Wait for the movement animation to finish before attacking
+
                     try { Thread.sleep(1500); } catch (Exception e) {}
-                    
-                    // [Action 2: Attack]
+
                     int ms = BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
-                    try { Thread.sleep(ms); } catch (InterruptedException e) { e.printStackTrace(); }
-                    
-                    // Apply damage
-                    int newHealth = target.getHealth() - attacker.getAttack();
-                    target.setHealth(newHealth);
-                    
-                    // Update UI health
-                    BasicCommands.setUnitHealth(out, target, Math.max(newHealth, 0));
-                    try { Thread.sleep(150); } catch (InterruptedException e) { e.printStackTrace(); }
-                    
-                 // Check for death
-                    if (newHealth <= 0) {
-                        BasicCommands.playUnitAnimation(out, target, UnitAnimationType.death);
-                        try { Thread.sleep(300); } catch (InterruptedException e) { e.printStackTrace(); }
-                        BasicCommands.deleteUnit(out, target);
-                        clickedTile.setUnit(null); // Clear the board reference
+                    try { Thread.sleep(ms); } catch (Exception e) {}
+
+                    boolean targetDied = applyDamageAndHandleDeath(out, clickedTile, target, attacker.getAttack());
+
+                    // (Story Card 12) Counterattack after move
+                    if (!targetDied) {
+                        tryCounterAttackOnce(out, landingTile, attacker, clickedTile, target);
                     }
 
-                    // [Action 3: End action]
                     attacker.setCanAttack(false);
                     attacker.setCanMove(false);
                     gameState.selectedTile = null;
                     return;
-                    
-                } else {
-                    BasicCommands.addPlayer1Notification(out, "Target is out of reach!", 2);
                 }
-             }
+            }
         }
-        
-        // Safety: only implement attack/highlight for human turn as per story
-        if (gameState.selectedTile != null && gameState.selectedTile.hasUnit() && !clickedTile.hasUnit()) {
+
+        // =========================
+        // Movement only
+        // =========================
+        if (gameState.selectedTile != null &&
+            gameState.selectedTile.hasUnit() &&
+            !clickedTile.hasUnit()) {
+
             Tile startTile = gameState.selectedTile;
-            Unit unitToMove = startTile.getUnit();
+            Unit unit = startTile.getUnit();
 
             int dx = Math.abs(clickedTile.getTilex() - startTile.getTilex());
             int dy = Math.abs(clickedTile.getTiley() - startTile.getTiley());
-            
-            // #hello, this is a change: Added condition to check if unit can actually move
-            if (dx <= 2 && dy <= 2 && unitToMove.getCanMove()) {
+
+            if (dx <= 2 && dy <= 2 && unit.getCanMove()) {
 
                 gameState.highlightManager.clearHighlights(clickedTile, out);
-                try { Thread.sleep(50); } catch (Exception e) {}
 
-                commands.BasicCommands.moveUnitToTile(out, unitToMove, clickedTile);
-                
-                clickedTile.setUnit(unitToMove);
+                BasicCommands.moveUnitToTile(out, unit, clickedTile);
+
+                clickedTile.setUnit(unit);
                 startTile.setUnit(null);
-                unitToMove.setPositionByTile(clickedTile);
+                unit.setPositionByTile(clickedTile);
 
-                // hello, this is a change: Prevent infinite movement after a valid move
-                unitToMove.setCanMove(false);
-                
+                unit.setCanMove(false);
                 gameState.selectedTile = null;
                 return;
             }
         }
-		
-		// (Story card 8) clear highlights
-		gameState.highlightManager.clearHighlights(clickedTile, out);
 
-				
-		/* (Story card 6) 
-		 Highlight tiles if player clicks on unit who 
-		 hasn't moved on attacked yet */
-	    if (clickedTile.hasUnit()) {
-			Unit unitOnTile = clickedTile.getUnit();
-			if (unitOnTile.getPlayer() == gameState.player1){
-                    
+        // =========================
+        // Highlight selection
+        // =========================
+        gameState.highlightManager.clearHighlights(clickedTile, out);
+
+        if (clickedTile.hasUnit()) {
+            Unit unit = clickedTile.getUnit();
+
+            if (unit.getPlayer() == gameState.player1) {
+
                 gameState.selectedTile = clickedTile;
-                
-                // hello, this is a change: Wrap highlights in condition checks
-                if (unitOnTile.getCanMove()) {
-                	gameState.highlightManager.highlightMovementRange(clickedTile, gameState, out);
+
+                if (unit.getCanMove()) {
+                    gameState.highlightManager.highlightMovementRange(clickedTile, gameState, out);
                 }
 
-                // Story 7: attack highlight (red on adjacent enemy units)
-                if (unitOnTile.getCanAttack()) {
-                	gameState.highlightManager.highlightAttackTargets(clickedTile, gameState, out);
+                if (unit.getCanAttack()) {
+                    gameState.highlightManager.highlightAttackTargets(clickedTile, gameState, out);
                 }
-            }			
-					
-	        } else {
-                 gameState.selectedTile = null;
             }
-       } 
-} 
+        } else {
+            gameState.selectedTile = null;
+        }
+    }
+
+
+    // ======================================================
+    // (Story Card 12 & 13 Helper Functions)
+    // ======================================================
+
+    private boolean isAdjacent8(Tile a, Tile b) {
+        int dx = Math.abs(a.getTilex() - b.getTilex());
+        int dy = Math.abs(a.getTiley() - b.getTiley());
+        return Math.max(dx, dy) == 1; // include diagonal
+    }
+
+    // (Story Card 13) Unified Damage + Death Handling
+    private boolean applyDamageAndHandleDeath(ActorRef out,
+                                             Tile targetTile,
+                                             Unit target,
+                                             int damage) {
+
+        int newHealth = target.getHealth() - damage;
+        target.setHealth(newHealth);
+
+        BasicCommands.setUnitHealth(out, target, Math.max(newHealth, 0));
+        try { Thread.sleep(150); } catch (Exception e) {}
+
+        if (newHealth <= 0) {
+            BasicCommands.playUnitAnimation(out, target, UnitAnimationType.death);
+            try { Thread.sleep(300); } catch (Exception e) {}
+
+            BasicCommands.deleteUnit(out, target);
+
+            if (targetTile != null) {
+                targetTile.setUnit(null);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    // (Story Card 12) Counterattack
+    private void tryCounterAttackOnce(ActorRef out,
+                                      Tile attackerTile,
+                                      Unit attacker,
+                                      Tile defenderTile,
+                                      Unit defender) {
+
+        if (defender.getHealth() <= 0) return;
+        if (!isAdjacent8(attackerTile, defenderTile)) return;
+
+        int ms = BasicCommands.playUnitAnimation(out, defender, UnitAnimationType.attack);
+        try { Thread.sleep(ms); } catch (Exception e) {}
+
+        applyDamageAndHandleDeath(out, attackerTile, attacker, defender.getAttack());
+    }
+}
