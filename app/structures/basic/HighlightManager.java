@@ -125,26 +125,61 @@ public void highlightAttackTargets(Tile unitTile, GameState gameState, ActorRef 
     // only highlight for human player's units, and only if canAttack
     if (attacker.getPlayer() != gameState.player1) return;
     if (!attacker.getCanAttack()) return;
+    // hello, this is a change: Remove the hard-coded 4 adjacent grids and instead scan all grids for enemies.
+    int attackerX = unitTile.getTilex();
+    int attackerY = unitTile.getTiley();
 
-    int x = unitTile.getTilex();
-    int y = unitTile.getTiley();
+    // Scan the entire board for potential enemies
+    for (int x = 0; x <= 9; x++) {
+        for (int y = 0; y <= 5; y++) {
+            Tile targetTile = gameState.board.getTile(x, y);
+            
+            // Skip if tile is empty or has our own unit
+            if (targetTile == null || !targetTile.hasUnit()) continue;
+            if (targetTile.getUnit().getPlayer() == gameState.player1) continue;
 
-    // 4-adjacent tiles
-    Tile[] adj = new Tile[] {
-        gameState.board.getTile(x - 1, y),
-        gameState.board.getTile(x + 1, y),
-        gameState.board.getTile(x, y - 1),
-        gameState.board.getTile(x, y + 1)
-    };
+            // Calculate distance to the enemy
+            int dx = Math.abs(targetTile.getTilex() - attackerX);
+            int dy = Math.abs(targetTile.getTiley() - attackerY);
+            boolean isAdjacent = (dx + dy == 1);
 
-    for (Tile t : adj) {
-        if (t == null) continue;
+            // Scenario 1: Enemy is directly adjacent (Story Card 7 part 1)
+            if (isAdjacent) {
+                BasicCommands.drawTile(out, targetTile, 2); // 2 represents red highlight
+                try { Thread.sleep(50); } catch (Exception e) {}
+                targetTiles.add(targetTile);
+            } 
+            // Scenario 2: Enemy is far, but our unit hasn't moved yet (Story Card 7 part 2)
+            else if (attacker.getCanMove()) {
+                
+                // Check the 4 tiles around the enemy to find a valid landing spot
+                int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}};
+                boolean canReach = false;
+                
+                for (int[] dir : directions) {
+                    int checkX = targetTile.getTilex() + dir[0];
+                    int checkY = targetTile.getTiley() + dir[1];
+                    Tile adjacentToTarget = gameState.board.getTile(checkX, checkY);
 
-        // only highlight if there is an enemy unit on that tile
-        if (t.hasUnit() && t.getUnit().getPlayer() != gameState.player1) {
-            BasicCommands.drawTile(out, t, 2); // try 2 as "red"
-            try { Thread.sleep(50); } catch (Exception e) {}
-            targetTiles.add(t);
+                    // If there is an empty tile next to the enemy within our movement range
+                    if (adjacentToTarget != null && !adjacentToTarget.hasUnit()) {
+                        int moveDx = Math.abs(adjacentToTarget.getTilex() - attackerX);
+                        int moveDy = Math.abs(adjacentToTarget.getTiley() - attackerY);
+
+                        if (moveDx <= 2 && moveDy <= 2) {
+                            canReach = true; // Found a valid landing spot!
+                            break;
+                        }
+                    }
+                }
+
+                // Highlight the far enemy in red if we can reach them
+                if (canReach) {
+                    BasicCommands.drawTile(out, targetTile, 2);
+                    try { Thread.sleep(50); } catch (Exception e) {}
+                    targetTiles.add(targetTile);
+                }
+            }
         }
     }
 }

@@ -5,6 +5,9 @@ import akka.actor.ActorRef;
 import commands.BasicCommands;
 import structures.GameState;
 import structures.basic.Player;
+//hello, this is a change: import these classes
+import structures.basic.Tile;
+import structures.basic.Unit;
 
 /**
  * Indicates that the user has clicked an object on the game canvas, in this case
@@ -46,7 +49,24 @@ public class EndTurnClicked implements EventProcessor {
             gameState.player1.startTurn(out);
 
             // Player 1 draws 1 card (rendered)
-            gameState.player1.drawCard(out);
+            //gameState.player1.drawCard(out); 
+            //This line of code has been commented out because it would cause the human player to draw a card at the end of the AI's turn.
+            
+            // hello, this is a change: 
+            for (int x = 0; x < 9; x++) {
+                for (int y = 0; y < 5; y++) {
+                    Tile tile = gameState.board.getTile(x, y);
+                    if (tile != null && tile.hasUnit()) {
+                        Unit u = tile.getUnit();
+                        // As long as it is a unit of the human player, all of them will recover their stamina
+                        if (u.getPlayer() == gameState.player1) {
+                            u.setCanMove(true);
+                            u.setCanAttack(true);
+                        }
+                    }
+                }
+            }
+            // change end
         }
 
         // Refresh mana display on both sides
