@@ -8,6 +8,8 @@ import structures.GameState;
 import structures.basic.UnitAnimationType;
 import structures.basic.Tile;
 import structures.basic.Unit;
+import structures.basic.Avatar;
+import structures.basic.Player;
 
 public class TileClicked implements EventProcessor {
 
@@ -16,6 +18,7 @@ public class TileClicked implements EventProcessor {
 
         int tilex = message.get("tilex").asInt();
         int tiley = message.get("tiley").asInt();
+        if (gameState.gameOver) return;
 
         Tile clickedTile = gameState.board.getTile(tilex, tiley);
         if (clickedTile == null) return;
@@ -43,11 +46,11 @@ public class TileClicked implements EventProcessor {
                 int ms = BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
                 try { Thread.sleep(ms); } catch (Exception e) {}
 
-                boolean targetDied = applyDamageAndHandleDeath(out, clickedTile, target, attacker.getAttack());
+                boolean targetDied = applyDamageAndHandleDeath(out, gameState, clickedTile, target, attacker.getAttack());
 
                 // (Story Card 12) Counterattack
                 if (!targetDied) {
-                    tryCounterAttackOnce(out, attackerTile, attacker, clickedTile, target);
+                    tryCounterAttackOnce(out, gameState, attackerTile, attacker, clickedTile, target);
                 }
 
                 attacker.setCanAttack(false);
@@ -100,11 +103,11 @@ public class TileClicked implements EventProcessor {
                     int ms = BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
                     try { Thread.sleep(ms); } catch (Exception e) {}
 
-                    boolean targetDied = applyDamageAndHandleDeath(out, clickedTile, target, attacker.getAttack());
+                    boolean targetDied = applyDamageAndHandleDeath(out, gameState, clickedTile, target, attacker.getAttack());
 
                     // (Story Card 12) Counterattack after move
                     if (!targetDied) {
-                        tryCounterAttackOnce(out, landingTile, attacker, clickedTile, target);
+                        tryCounterAttackOnce(out, gameState, landingTile, attacker, clickedTile, target);
                     }
 
                     attacker.setCanAttack(false);
@@ -182,9 +185,37 @@ public class TileClicked implements EventProcessor {
 
     // (Story Card 13) Unified Damage + Death Handling
     private boolean applyDamageAndHandleDeath(ActorRef out,
+                                             GameState gameState,
                                              Tile targetTile,
                                              Unit target,
                                              int damage) {
+        // Story 14: Avatar Damage
+        if (target instanceof Avatar) {
+
+            Player owner = target.getPlayer();
+
+            int newPlayerHealth = owner.getHealth() - damage;
+            owner.setHealth(newPlayerHealth);
+        
+            //Synchronize Avatar's own blood volume (for UI bubble)
+            target.setHealth(newPlayerHealth);
+            BasicCommands.setUnitHealth(out, target, Math.max(newPlayerHealth, 0));
+            owner.showLife(out);
+
+        // Story 15: Win / Loss
+            if (newPlayerHealth <= 0) {
+
+                if (owner == gameState.player1) {
+                    BasicCommands.addPlayer1Notification(out, "Game Over - You Lose!", 5);
+                } else {
+                    BasicCommands.addPlayer1Notification(out, "Victory - You Win!", 5);
+                }
+
+                gameState.gameOver = true;
+            }
+
+            return false; // Avatar will not be deleted.
+        }        
 
         int newHealth = target.getHealth() - damage;
         target.setHealth(newHealth);
@@ -210,6 +241,7 @@ public class TileClicked implements EventProcessor {
 
     // (Story Card 12) Counterattack
     private void tryCounterAttackOnce(ActorRef out,
+                                      GameState gameState,
                                       Tile attackerTile,
                                       Unit attacker,
                                       Tile defenderTile,
@@ -221,6 +253,6 @@ public class TileClicked implements EventProcessor {
         int ms = BasicCommands.playUnitAnimation(out, defender, UnitAnimationType.attack);
         try { Thread.sleep(ms); } catch (Exception e) {}
 
-        applyDamageAndHandleDeath(out, attackerTile, attacker, defender.getAttack());
+        applyDamageAndHandleDeath(out, gameState, attackerTile, attacker, defender.getAttack());
     }
 }
