@@ -37,6 +37,7 @@ public class Unit {
 	boolean canMove = true;
 	boolean canAttack = true;
 	Player player;
+	boolean isStunned = false;
 	
 	public Unit() {}
 	
@@ -191,5 +192,11 @@ public class Unit {
 				public void setCanAttack(boolean val) {
 					this.canAttack = val;
 				}
-	
+	// Getters and setters for isStunned
+	public boolean getIsStunned() {
+        return isStunned;
+    }
+	public void setIsStunned(boolean val) {
+        this.isStunned = val;
+    }
 }

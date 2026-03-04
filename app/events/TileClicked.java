@@ -10,6 +10,7 @@ import structures.basic.Tile;
 import structures.basic.Unit;
 import structures.basic.Avatar;
 import structures.basic.Player;
+import structures.basic.Card;
 
 public class TileClicked implements EventProcessor {
 
@@ -22,6 +23,79 @@ public class TileClicked implements EventProcessor {
 
         Tile clickedTile = gameState.board.getTile(tilex, tiley);
         if (clickedTile == null) return;
+
+        //
+        if (gameState.isSpellTargeting && gameState.handPositionClicked != -1) {
+            
+            // 
+            Tile[][] allTiles = gameState.board.getTiles();
+            int rows = allTiles.length;
+            int cols = allTiles[0].length;
+
+            // Only allow targeting enemy units
+            if (clickedTile.hasUnit() && clickedTile.getUnit().getPlayer() != gameState.player1) {
+                
+                Card spellCard = gameState.player1.getHandManager().getHandCards().get(gameState.handPositionClicked - 1);
+                structures.basic.Unit targetUnit = clickedTile.getUnit();
+
+                // Execute [28] Dark Terminus
+                if (spellCard.getCardname().equals("Dark Terminus")) {
+                    targetUnit.setHealth(0);
+                    BasicCommands.playUnitAnimation(out, targetUnit, structures.basic.UnitAnimationType.death);
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+                    
+                    clickedTile.setUnit(null); 
+                    BasicCommands.deleteUnit(out, targetUnit); 
+                    BasicCommands.addPlayer1Notification(out, "Unit Destroyed!", 2);
+
+                    // Add a new Wraithling unit to the board at the clicked tile
+                    // 999 is just a temporary ID
+                    structures.basic.Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, 999, structures.basic.Unit.class); 
+                    wraithling.setPlayer(gameState.player1);
+                    wraithling.setPositionByTile(clickedTile);
+                    clickedTile.setUnit(wraithling); 
+                    
+                    // Draw the Wraithling on the board and then immediately set its health and attack to 1/1 to reflect the card's effect
+                    BasicCommands.drawUnit(out, wraithling, clickedTile);
+                    try { Thread.sleep(100); } catch (Exception e) {}
+                    
+                    BasicCommands.setUnitAttack(out, wraithling, 1);
+                    BasicCommands.setUnitHealth(out, wraithling, 1);
+                }
+
+                // Execute [29] Beamshock
+                else if (spellCard.getCardname().equals("Beamshock")) {
+                    targetUnit.setIsStunned(true); 
+                    BasicCommands.addPlayer1Notification(out, "Unit Stunned!", 2);
+                }
+
+                // Deduct mana, update UI, and remove the card from hand
+                gameState.player1.setMana(gameState.player1.getMana() - spellCard.getManacost());
+                gameState.player1.showMana(out);
+
+                // Remove the card from the player's hand and update the UI
+                BasicCommands.deleteCard(out, gameState.handPositionClicked);
+                gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
+
+            } else {
+                BasicCommands.addPlayer1Notification(out, "Invalid Target!", 2);
+            }
+
+            // Whether the spell was successfully cast or not, we exit spell targeting mode and reset the clicked card position
+            gameState.isSpellTargeting = false;
+            gameState.handPositionClicked = -1;
+            
+            // Clear all highlights (including the red ones for spell targeting)
+            for (int x = 1; x <= cols; x++) {
+                for (int y = 1; y <= rows; y++) {
+                    Tile t = gameState.board.getTile(x, y);
+                    if (t != null) {
+                        BasicCommands.drawTile(out, t, 0); 
+                    }
+                }
+            }
+            return;
+        }
 
         BasicCommands.addPlayer1Notification(out, "Clicked: " + tilex + ", " + tiley, 2);
 
