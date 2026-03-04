@@ -25,4 +25,11 @@ public class HandManager {
     public List<Card> getHandCards() {
         return handCards;
     }
+    
+    // Method to remove a card from the hand by index
+    public void removeCard(int index) {
+        if (index >= 0 && index < handCards.size()) {
+            handCards.remove(index);
+        }
+    }
 }

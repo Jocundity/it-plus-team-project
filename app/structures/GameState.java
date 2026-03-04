@@ -36,6 +36,10 @@ public class GameState {
     
     // record the selected tile for the player
     public Tile selectedTile = null;
-		
+	
+    // record the selected unit for the player
+    public int handPositionClicked = -1;
     
+    // record the unit that is being dragged by the player
+    public boolean isSpellTargeting = false;
 }
