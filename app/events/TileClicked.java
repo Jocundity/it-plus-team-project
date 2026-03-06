@@ -162,8 +162,18 @@ public class TileClicked implements EventProcessor {
                 BasicCommands.deleteCard(out, gameState.handPositionClicked);
                 gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
 
+                // Refresh hand UI after spell card is used
+                for (int i = 1; i <= 6; i++) {
+                    BasicCommands.deleteCard(out, i);
+                }
+                for (int i = 0; i < gameState.player1.getHandManager().getHandCards().size(); i++) {
+                    Card c = gameState.player1.getHandManager().getHandCards().get(i);
+                    BasicCommands.drawCard(out, c, i + 1, 0);
+                }
+
             } else {
                 BasicCommands.addPlayer1Notification(out, "Invalid Target!", 2);
+                return; // keep spell targeting mode active
             }
 
             // Whether the spell was successfully cast or not, we exit spell targeting mode and reset the clicked card position

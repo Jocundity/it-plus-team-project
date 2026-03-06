@@ -102,21 +102,9 @@ public class CardClicked implements EventProcessor{
                     gameState.selectedTile = null;
                 }
 
-               // Highlight all enemy units on the board for targeting
-                Tile[][] allTiles = gameState.board.getTiles();
-                int rows = allTiles.length;
-                int cols = allTiles[0].length;
-            
-                for (int x = 1; x <= cols; x++) {
-                    for (int y = 1; y <= rows; y++) {
-                        Tile t = gameState.board.getTile(x, y);
-                        // Highlight enemy units with a different highlight type (e.g., 2 for targeting)
-                        if (t != null && t.hasUnit() && t.getUnit().getPlayer() != gameState.player1) {
-                            BasicCommands.drawTile(out, t, 2); 
-                        }
-                    }
-                }
-                BasicCommands.addPlayer1Notification(out, "Select enemy target", 2);
+               // (Story 31) Highlight valid spell targets through HighlightManager
+               gameState.highlightManager.highlightSpellTargets(gameState, out);
+               BasicCommands.addPlayer1Notification(out, "Select enemy target", 2);
             }
            } else {
         	    // Only trigger summoning mode if it's NOT a spell
