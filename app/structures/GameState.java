@@ -5,6 +5,7 @@ import structures.basic.Board;
 import structures.basic.HighlightManager;
 import structures.basic.Player;
 import structures.basic.Tile;
+import structures.basic.Card;
 
 /**
  * This class can be used to hold information about the on-going game.
@@ -42,4 +43,10 @@ public class GameState {
     
     // record the unit that is being dragged by the player
     public boolean isSpellTargeting = false;
+    
+    // record whether the player is currently preparing to summon a unit (#32)
+    public boolean isUnitSummoning = false;
+
+    // record the currently selected hand cards (#25, #32)
+    public Card selectedCard = null;
 }
