@@ -16,7 +16,12 @@ public class TileClicked implements EventProcessor {
 
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-
+   
+    	// If it is not currently Player 1's turn, all clicks on the board will be directly ignored.
+    	if (!gameState.isPlayer1Turn) {
+            return; 
+        }
+    	
         int tilex = message.get("tilex").asInt();
         int tiley = message.get("tiley").asInt();
         if (gameState.gameOver) return;
@@ -24,7 +29,87 @@ public class TileClicked implements EventProcessor {
         Tile clickedTile = gameState.board.getTile(tilex, tiley);
         if (clickedTile == null) return;
 
-        //
+        // (Story Card 25) Unit Summoning Execution Phase
+        if (gameState.isUnitSummoning && gameState.selectedCard != null && gameState.handPositionClicked != -1) {
+            
+            // Validate summon tile: must be empty and adjacent (8-direction) to a friendly unit
+            boolean isValidSummonTile = false;
+            if (!clickedTile.hasUnit()) {
+                int[][] directions = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
+                for (int[] dir : directions) {
+                    Tile adjTile = gameState.board.getTile(clickedTile.getTilex() + dir[0], clickedTile.getTiley() + dir[1]);
+                    if (adjTile != null && adjTile.hasUnit() && adjTile.getUnit().getPlayer() == gameState.player1) {
+                        isValidSummonTile = true;
+                        break;
+                    }
+                }
+            }
+
+            if (isValidSummonTile) {
+                Card cardToSummon = gameState.selectedCard;
+                
+                // Deduct mana cost from player and refresh mana UI display
+                gameState.player1.setMana(gameState.player1.getMana() - cardToSummon.getManacost());
+                gameState.player1.showMana(out);
+                
+                // Play the summoning circle effect
+                BasicCommands.playEffectAnimation(out, utils.BasicObjectBuilders.loadEffect(utils.StaticConfFiles.f1_summon), clickedTile);
+                try { Thread.sleep(500); } catch (Exception e) {}
+                
+                // Resolve unit config file by card name
+                String confFile = getUnitConfigFile(cardToSummon.getCardname());
+                
+                // Create a monster unit and set it to belong to Player 1
+                int unitID = Math.abs(cardToSummon.getCardname().hashCode() + clickedTile.getTilex() + clickedTile.getTiley());
+                Unit newUnit = utils.BasicObjectBuilders.loadUnit(confFile, unitID, Unit.class);
+                newUnit.setPlayer(gameState.player1);
+                
+                // Place unit on target tile and render to game view
+                newUnit.setPositionByTile(clickedTile);
+                clickedTile.setUnit(newUnit);
+                BasicCommands.drawUnit(out, newUnit, clickedTile);
+                try { Thread.sleep(100); } catch (Exception e) {}
+                
+                // Sync unit stats (ATK/HP) with card values and update UI
+                newUnit.setAttack(cardToSummon.getBigCard().getAttack());
+                newUnit.setHealth(cardToSummon.getBigCard().getHealth());
+                BasicCommands.setUnitAttack(out, newUnit, newUnit.getAttack());
+                BasicCommands.setUnitHealth(out, newUnit, newUnit.getHealth());
+                
+                // Newly summoned units are "exhausted" (can't move/attack) for the current turn
+                newUnit.setCanMove(false);
+                newUnit.setCanAttack(false);
+                
+                // Remove consumed card from player's hand
+                gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
+                
+                // Safely obtain cards
+                gameState.highlightManager.clearHighlights(clickedTile, out);
+                
+                // Refresh hand UI: Clear all hand slots on the screen
+                for (int i = 1; i <= 6; i++) {
+                    BasicCommands.deleteCard(out, i);
+                }
+                // Redraw the remaining cards according to the real data
+                for (int i = 0; i < gameState.player1.getHandManager().getHandCards().size(); i++) {
+                    Card c = gameState.player1.getHandManager().getHandCards().get(i);
+                    BasicCommands.drawCard(out, c, i + 1, 0); // 0 = Normal without highlighting
+                }
+                
+                gameState.isUnitSummoning = false;
+                gameState.selectedCard = null;
+                gameState.handPositionClicked = -1;
+                
+                return; // Exit early - summon completed successfully
+                
+            } else {
+            	// Notify player of invalid summon location
+                BasicCommands.addPlayer1Notification(out, "Invalid Summon Location!", 2);
+                return;
+            }
+        }
+        
+        // Spell Targeting Logic
         if (gameState.isSpellTargeting && gameState.handPositionClicked != -1) {
             
             // 
@@ -68,7 +153,7 @@ public class TileClicked implements EventProcessor {
                     targetUnit.setIsStunned(true); 
                     BasicCommands.addPlayer1Notification(out, "Unit Stunned!", 2);
                 }
-
+                
                 // Deduct mana, update UI, and remove the card from hand
                 gameState.player1.setMana(gameState.player1.getMana() - spellCard.getManacost());
                 gameState.player1.showMana(out);
@@ -94,6 +179,15 @@ public class TileClicked implements EventProcessor {
                     }
                 }
             }
+            
+            // Clear targeting highlights
+            gameState.highlightManager.clearHighlights(null, out);
+            
+            // Reset selection states
+            gameState.isSpellTargeting = false;
+            gameState.selectedCard = null;
+            gameState.handPositionClicked = -1;
+            
             return;
         }
 
@@ -136,32 +230,29 @@ public class TileClicked implements EventProcessor {
             // =========================
             // (Story Card 10) Move + Attack
             // =========================
-            else if (enemy && attacker.getCanAttack()) {
+            else if (enemy && attacker.getCanAttack() && attacker.getCanMove()) {
 
                 Tile landingTile = null;
                 int minDistance = 999;
 
-                int[][] directions = {{0,1},{0,-1},{1,0},{-1,0}};
+                // Scan 8 directions around the enemy for a valid landing spot
+                int[][] directions = {{0,1},{0,-1},{1,0},{-1,0},{1,1},{1,-1},{-1,1},{-1,-1}};
                 for (int[] dir : directions) {
                     Tile candidate = gameState.board.getTile(
                         clickedTile.getTilex() + dir[0],
                         clickedTile.getTiley() + dir[1]);
 
-                    if (candidate != null && !candidate.hasUnit()) {
-
+                    // Call the standard rule to check if we can legally move there
+                    if (candidate != null && gameState.highlightManager.isValidMove(attackerTile, candidate, gameState)) {
                         int dx = Math.abs(candidate.getTilex() - attackerTile.getTilex());
                         int dy = Math.abs(candidate.getTiley() - attackerTile.getTiley());
-
-                        if (dx <= 2 && dy <= 2) {
-                            int dist = dx + dy;
-                            if (dist < minDistance) {
-                                minDistance = dist;
-                                landingTile = candidate;
-                            }
+                        int dist = dx + dy;
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            landingTile = candidate;
                         }
                     }
                 }
-
                 if (landingTile != null) {
 
                     gameState.highlightManager.clearHighlights(clickedTile, out);
@@ -196,30 +287,24 @@ public class TileClicked implements EventProcessor {
         // Movement only
         // =========================
         if (gameState.selectedTile != null &&
-            gameState.selectedTile.hasUnit() &&
-            !clickedTile.hasUnit()) {
+                gameState.selectedTile.hasUnit() &&
+                !clickedTile.hasUnit()) {
 
-            Tile startTile = gameState.selectedTile;
-            Unit unit = startTile.getUnit();
+                Tile startTile = gameState.selectedTile;
+                Unit unit = startTile.getUnit();
 
-            int dx = Math.abs(clickedTile.getTilex() - startTile.getTilex());
-            int dy = Math.abs(clickedTile.getTiley() - startTile.getTiley());
-
-            if (dx <= 2 && dy <= 2 && unit.getCanMove()) {
-
-                gameState.highlightManager.clearHighlights(clickedTile, out);
-
-                BasicCommands.moveUnitToTile(out, unit, clickedTile);
-
-                clickedTile.setUnit(unit);
-                startTile.setUnit(null);
-                unit.setPositionByTile(clickedTile);
-
-                unit.setCanMove(false);
-                gameState.selectedTile = null;
-                return;
+                // Directly call the standard rule in HighlightManager to validate the move
+                if (unit.getCanMove() && gameState.highlightManager.isValidMove(startTile, clickedTile, gameState)) {
+                    gameState.highlightManager.clearHighlights(clickedTile, out);
+                    BasicCommands.moveUnitToTile(out, unit, clickedTile);
+                    clickedTile.setUnit(unit);
+                    startTile.setUnit(null);
+                    unit.setPositionByTile(clickedTile);
+                    unit.setCanMove(false);
+                    gameState.selectedTile = null;
+                    return;
+                }
             }
-        }
 
         // =========================
         // Highlight selection
@@ -328,5 +413,29 @@ public class TileClicked implements EventProcessor {
         try { Thread.sleep(ms); } catch (Exception e) {}
 
         applyDamageAndHandleDeath(out, gameState, attackerTile, attacker, defender.getAttack());
+    }
+    
+    // Map the card names to the monster model configuration files
+    private String getUnitConfigFile(String cardName) {
+        switch (cardName) {
+            // Abyssian (Player 1)'s monster
+            case "Bad Omen": return "conf/gameconfs/units/bad_omen.json";
+            case "Gloom Chaser": return "conf/gameconfs/units/gloom_chaser.json";
+            case "Shadow Watcher": return "conf/gameconfs/units/shadow_watcher.json";
+            case "Nightsorrow Assassin": return "conf/gameconfs/units/nightsorrow_assassin.json";
+            case "Rock Pulveriser": return "conf/gameconfs/units/rock_pulveriser.json";
+            case "Bloodmoon Priestess": return "conf/gameconfs/units/bloodmoon_priestess.json";
+            case "Shadowdancer": return "conf/gameconfs/units/shadowdancer.json";
+        
+            // Lyonar (Player 2)'s monster
+            case "Skyrock Golem": return "conf/gameconfs/units/skyrock_golem.json";
+            case "Swamp Entangler": return "conf/gameconfs/units/swamp_entangler.json";
+            case "Silverguard Knight": return "conf/gameconfs/units/silverguard_knight.json";
+            case "Saberspine Tiger": return "conf/gameconfs/units/saberspine_tiger.json";
+            case "Young Flamewing": return "conf/gameconfs/units/young_flamewing.json";
+            case "Silverguard Squire": return "conf/gameconfs/units/silverguard_squire.json";
+            case "Ironcliff Guardian": return "conf/gameconfs/units/ironcliff_guardian.json";
+            default: return utils.StaticConfFiles.wraithling; 
+        }
     }
 }

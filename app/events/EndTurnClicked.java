@@ -5,7 +5,6 @@ import akka.actor.ActorRef;
 import commands.BasicCommands;
 import structures.GameState;
 import structures.basic.Player;
-//hello, this is a change: import these classes
 import structures.basic.Tile;
 import structures.basic.Unit;
 
@@ -25,6 +24,26 @@ public class EndTurnClicked implements EventProcessor {
 
         if (gameState.isPlayer1Turn) {
 
+        	// Mandatory UI and State Cleanup before turn ends
+        	
+        	// 1. Clear all board highlights (movement/attack ranges)
+            gameState.highlightManager.clearHighlights(null, out);
+            
+            // 2. Deselect the currently selected tile/unit
+            gameState.selectedTile = null;
+            
+            // 3. Forcefully disable summoning and spell targeting modes
+            gameState.isUnitSummoning = false;
+            gameState.isSpellTargeting = false;
+            
+            // 4. Reset hand selection and restore card UI to default state (0 = normal)
+            gameState.handPositionClicked = -1;
+            gameState.selectedCard = null;
+            for (int i = 0; i < gameState.player1.getHandManager().getHandCards().size(); i++) {
+                structures.basic.Card c = gameState.player1.getHandManager().getHandCards().get(i);
+                BasicCommands.drawCard(out, c, i + 1, 0); 
+            }
+        	
             // Human ends turn
             System.out.println("[STATE] Human Player ending turn!");
             System.out.println("[ACTION] Drawing card for Human...");
@@ -53,8 +72,8 @@ public class EndTurnClicked implements EventProcessor {
             //This line of code has been commented out because it would cause the human player to draw a card at the end of the AI's turn.
             
             // hello, this is a change: 
-            for (int x = 0; x < 9; x++) {
-                for (int y = 0; y < 5; y++) {
+            for (int x = 0; x <= 9; x++) {
+                for (int y = 0; y <= 5; y++) {
                     Tile tile = gameState.board.getTile(x, y);
                     if (tile != null && tile.hasUnit()) {
                         Unit u = tile.getUnit();
