@@ -147,22 +147,24 @@ public class HighlightManager {
 	                    }
 	                }
 	            }
-        	}
-	
-	
-	
-	
-		
-		
-		
-		
-					
+			}	
+        	// (Story card 31) Highlight valid spell targets
+            public void highlightSpellTargets(GameState gameState, ActorRef out) {
 
-		
-		
-		
-		
-	
+                // Clear previous highlights first
+                clearHighlights(null, out);
 
+                for (int x = 0; x <= 9; x++) {
+                    for (int y = 0; y <= 5; y++) {
+                        Tile t = gameState.board.getTile(x, y);
 
-}
+                        // Only highlight enemy units
+                        if (t != null && t.hasUnit() && t.getUnit().getPlayer() != gameState.player1) {
+                            BasicCommands.drawTile(out, t, 2); // red highlight
+                            targetTiles.add(t);
+                            try { Thread.sleep(20); } catch (Exception e) {}
+                        }
+                    }
+                }
+            }
+		}
