@@ -7,6 +7,7 @@ import commands.BasicCommands;
 import utils.BasicObjectBuilders;
 import utils.StaticConfFiles;
 import akka.actor.ActorRef;
+import structures.GameState;
 
 /**
  * This is a representation of a Unit on the game board.
@@ -30,6 +31,7 @@ public class Unit {
 	Position position;
 	UnitAnimationSet animations;
 	ImageCorrection correction;
+	int maxHealth;
 	int health;
 	int attack;
 	String configFile;
@@ -44,6 +46,7 @@ public class Unit {
 	public Unit(int id, String configFile, int health, int attack, Player player) {
 		this.id = id;
 		this.health = health;
+		this.maxHealth = health;
 		this.attack = attack;
 		this.configFile = configFile;
 		this.player = player;
@@ -127,6 +130,67 @@ public class Unit {
     	this.health = health;
 	}
 	
+	// Visualise health on screen
+	public void showHealth(ActorRef out) {
+    	this.health = this.getHealth();
+    	BasicCommands.setUnitHealth(out, this, health);
+	}
+	
+	// Method to increase health without going above max health
+	public void increaseHealth(ActorRef out, int amount) {
+		if (health + amount > maxHealth) {
+			this.health = maxHealth;
+			
+		} else {
+			health = health + amount;
+		}
+		this.showHealth(out);
+		
+	}
+	
+	// Method to decrease health without going below zero
+		public void decreaseHealth(GameState gameState, ActorRef out, int amount) {
+			if (health - amount <= 0) {
+				this.health = 0;
+				this.showHealth(out);
+				
+				// Play hit and death animations and delete unit from board
+				BasicCommands.playUnitAnimation(out, this, UnitAnimationType.hit);
+				try { Thread.sleep(2000); } catch (Exception e) {}
+				BasicCommands.playUnitAnimation(out, this, UnitAnimationType.death);
+				try { Thread.sleep(2000); } catch (Exception e) {}
+				
+				Tile deathTile = this.tile;
+				BasicCommands.deleteUnit(out, this);
+				try { Thread.sleep(1000); } catch (Exception e) {}
+				
+				if (deathTile != null) {
+					deathTile.setUnit(null);
+					BasicCommands.drawTile(out, deathTile, 0);
+					
+				}
+				
+			} else {
+				health = health - amount;
+				this.showHealth(out);
+				
+				// Play hit animation followed by idle animation
+				BasicCommands.playUnitAnimation(out, this, UnitAnimationType.hit);
+				try { Thread.sleep(2000); } catch (Exception e) {}
+				BasicCommands.playUnitAnimation(out, this, UnitAnimationType.idle);
+			}
+			
+		}
+	
+	// Getters and setters for max health
+	public int getMaxHealth() {
+    	return maxHealth;
+	}
+
+	public void setMaxHealth(int health) {
+    	this.maxHealth = maxHealth;
+	}
+	
 	public int getAttack() {
     	return attack;
 	}
@@ -141,29 +205,35 @@ public class Unit {
 	 */
 	@JsonIgnore
 	public void setPositionByTile(Tile tile) {
-		position = new Position(tile.getXpos(),tile.getYpos(),tile.getTilex(),tile.getTiley());
+		if (tile == null) {
+			return;
+		}
+		this.position = new Position(tile.getXpos(),tile.getYpos(),tile.getTilex(),tile.getTiley());
+		this.tile = tile;
 	}
 	
 	/* Draws a unit on a tile
 	and displays initial health and attack stats */
-	public void drawUnit(ActorRef out, Tile tile) {	
-		Unit sprite = BasicObjectBuilders.loadUnit(configFile, id, Unit.class);
+	public void drawUnit(ActorRef out, Tile tile) {
+		// Get configuration files
+		Unit template = BasicObjectBuilders.loadUnit(configFile, id, Unit.class);
+		this.animations = template.getAnimations();
+		this.correction = template.getCorrection();
+		
+		// Assign unit to tile
 		this.tile = tile;
-		tile.setUnit(sprite);
-		sprite.setPositionByTile(tile); 
-		BasicCommands.drawUnit(out, sprite, tile);
-		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
-		
-		BasicCommands.setUnitHealth(out, sprite, this.health);
-		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
-		
-		BasicCommands.setUnitAttack(out, sprite, this.attack);
-		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
-		
 		tile.setUnit(this);
-        this.setPositionByTile(tile);
-        this.setAnimations(sprite.getAnimations());
-        this.setCorrection(sprite.getCorrection());
+		this.setPositionByTile(tile);
+		
+		// Draw unit 
+		BasicCommands.drawUnit(out, this, tile);
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
+		
+		BasicCommands.setUnitHealth(out, this, this.health);
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
+		
+		BasicCommands.setUnitAttack(out, this, this.attack);
+		try {Thread.sleep(100);} catch (InterruptedException e) {e.printStackTrace();}
 	}
 	
 	// Getters and setters for player 

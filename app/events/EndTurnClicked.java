@@ -1,9 +1,13 @@
 package events;
 
 import com.fasterxml.jackson.databind.JsonNode;
+
 import akka.actor.ActorRef;
 import commands.BasicCommands;
 import structures.GameState;
+import structures.basic.BigCard;
+import structures.basic.Card;
+import structures.basic.MiniCard;
 import structures.basic.Player;
 import structures.basic.Tile;
 import structures.basic.Unit;
@@ -27,7 +31,7 @@ public class EndTurnClicked implements EventProcessor {
         	// Mandatory UI and State Cleanup before turn ends
         	
         	// 1. Clear all board highlights (movement/attack ranges)
-            gameState.highlightManager.clearHighlights(null, out);
+            gameState.highlightManager.clearHighlights(out);
             
             // 2. Deselect the currently selected tile/unit
             gameState.selectedTile = null;
@@ -44,10 +48,6 @@ public class EndTurnClicked implements EventProcessor {
                 BasicCommands.drawCard(out, c, i + 1, 0); 
             }
         	
-            // Human ends turn
-            System.out.println("[STATE] Human Player ending turn!");
-            System.out.println("[ACTION] Drawing card for Human...");
-
             // Story Card #1: Humans draw a card when pressing the end button
             gameState.player1.drawCard(out);
 
@@ -57,39 +57,69 @@ public class EndTurnClicked implements EventProcessor {
             // Switch to Player 2
             gameState.isPlayer1Turn = false;
             gameState.player2.startTurn(out);
-
-        } else {
-
-            // AI ends turn, switching back to human player
-            gameState.player2.drainMana(out);
-
-            // Switch to Player 1
-            gameState.isPlayer1Turn = true;
-            gameState.player1.startTurn(out);
-
-            // Player 1 draws 1 card (rendered)
-            //gameState.player1.drawCard(out); 
-            //This line of code has been commented out because it would cause the human player to draw a card at the end of the AI's turn.
             
-            // hello, this is a change: 
-            for (int x = 0; x <= 9; x++) {
-                for (int y = 0; y <= 5; y++) {
-                    Tile tile = gameState.board.getTile(x, y);
-                    if (tile != null && tile.hasUnit()) {
-                        Unit u = tile.getUnit();
-                        // As long as it is a unit of the human player, all of them will recover their stamina
-                        if (u.getPlayer() == gameState.player1) {
-                            u.setCanMove(true);
-                            u.setCanAttack(true);
-                        }
-                    }
-                }
+            gameState.player1.showMana(out);
+            gameState.player2.showMana(out);
+            
+            handleAITurn(out, gameState);
+            
+        } else {
+        	// Do nothing if button is clicked during player 2's turn
+        	return;
             }
-            // change end
-        }
-
-        // Refresh mana display on both sides
-        gameState.player1.showMana(out);
-        gameState.player2.showMana(out);
     }
+        
+        private void handleAITurn(final ActorRef out, final GameState gameState) {
+        	new Thread(() -> {
+        		try {
+        			BasicCommands.addPlayer1Notification(out, "Player 2's turn", 2);
+        			Thread.sleep(2000);
+        			
+        			// Let AI choose and play card 
+        			// ** only 1 card per turn for now **
+        			Card aiCard = gameState.player2.chooseCard(gameState);
+        			BasicCommands.addPlayer1Notification(out, "Player 2 chose " + aiCard.getCardname(), 2);
+        			Thread.sleep(2000);
+        			gameState.player2.playCard(aiCard, gameState, out, gameState.highlightManager);
+        			Thread.sleep(2000);
+        			
+        			
+            		
+            		// End turn actions
+        			Thread.sleep(2000);
+            		gameState.player2.drainMana(out);
+            		gameState.player2.drawCard(out);
+            		
+            		// Switch back to Player 1
+            		Thread.sleep(2000);
+            		gameState.isPlayer1Turn = true;
+            		gameState.player1.startTurn(out);
+            		
+            		// Ensure that Player 1's units can move and attack
+            		for (int x = 0; x < 9; x++) {
+            			for (int y = 0; y < 5; y++) {
+            				Tile tile = gameState.board.getTile(x, y);
+            				if (tile != null && tile.hasUnit()) {
+            					Unit u = tile.getUnit();
+            					if (u.getPlayer() == gameState.player1) {
+            						u.setCanMove(true);
+            						u.setCanAttack(true);
+            					}
+            				}
+            			}
+            		}
+            	
+            	// Show mana amounts on screen
+            	gameState.player1.showMana(out);
+            	gameState.player2.showMana(out);
+            	
+            	// Notify Player 1 that it's their turn
+            	BasicCommands.addPlayer1Notification(out, "Player 1's turn", 2);
+            	
+        		} catch (Exception e) {
+                    e.printStackTrace();
+        		}
+        		
+        	}).start();
+        }
 }

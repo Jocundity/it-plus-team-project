@@ -21,8 +21,15 @@ public class Board {
 		for (int row = 0; row < rows; row++) {
 			for (int col = 0; col < cols; col++) {
 				Tile tile = BasicObjectBuilders.loadTile(col + 1, row + 1);
+				
+				// Make sure tile numbers start at 1
+				tile.setTilex(col +1);
+				tile.setTiley(row + 1);
+				
+				// Move board up so it doesn't overlap with player's hand
 				tile.setXpos(tile.getXpos() - 120);
 				tile.setYpos(tile.getYpos() - 120);
+				
 				tiles[row][col] = tile;
 			}
 		}

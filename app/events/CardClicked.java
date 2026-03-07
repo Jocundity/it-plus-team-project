@@ -51,7 +51,7 @@ public class CardClicked implements EventProcessor{
 
         // Clear highlight from previously selected board tile
         if (gameState.selectedTile != null) {
-        	gameState.highlightManager.clearHighlights(gameState.selectedTile, out);
+        	gameState.highlightManager.clearHighlights(out);
             gameState.selectedTile = null;
         }
 
@@ -81,7 +81,7 @@ public class CardClicked implements EventProcessor{
             gameState.isSpellTargeting = true; // Use this flag for spells instead
             
             // Clear old highlights and don't show summonable tiles
-            gameState.highlightManager.clearHighlights(null, out); 
+            gameState.highlightManager.clearHighlights(out); 
             BasicCommands.addPlayer1Notification(out, "Spell Selected: " + cardName, 2);
 
             if (cardName.equals("Dark Terminus") || cardName.equals("Beamshock")) {
@@ -98,7 +98,7 @@ public class CardClicked implements EventProcessor{
             
                 // Clear previous standard movement highlights
                 if (gameState.selectedTile != null) {
-                    gameState.highlightManager.clearHighlights(gameState.selectedTile, out);
+                    gameState.highlightManager.clearHighlights(out);
                     gameState.selectedTile = null;
                 }
 

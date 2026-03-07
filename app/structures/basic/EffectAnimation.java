@@ -26,6 +26,7 @@ public class EffectAnimation {
 		this.correction = correction;
 		this.fps = fps;
 	}
+	
 	public List<String> getAnimationTextures() {
 		return animationTextures;
 	}
