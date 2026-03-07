@@ -84,7 +84,7 @@ public class TileClicked implements EventProcessor {
                 gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
                 
                 // Safely obtain cards
-                gameState.highlightManager.clearHighlights(clickedTile, out);
+                gameState.highlightManager.clearHighlights(out);
                 
                 // Refresh hand UI: Clear all hand slots on the screen
                 for (int i = 1; i <= 6; i++) {
@@ -191,7 +191,7 @@ public class TileClicked implements EventProcessor {
             }
             
             // Clear targeting highlights
-            gameState.highlightManager.clearHighlights(null, out);
+            gameState.highlightManager.clearHighlights(out);
             
             // Reset selection states
             gameState.isSpellTargeting = false;
@@ -219,16 +219,19 @@ public class TileClicked implements EventProcessor {
 
             if (enemy && adjacent && attacker.getCanAttack()) {
 
-                gameState.highlightManager.clearHighlights(clickedTile, out);
+                gameState.highlightManager.clearHighlights(out);
 
-                int ms = BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
-                try { Thread.sleep(ms); } catch (Exception e) {}
-
-                boolean targetDied = applyDamageAndHandleDeath(out, gameState, clickedTile, target, attacker.getAttack());
+                // Attack enemy and play attack animation
+                BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
+                try { Thread.sleep(1000); } catch (Exception e) {}
+                target.decreaseHealth(gameState, out, attacker.getAttack());
 
                 // (Story Card 12) Counterattack
-                if (!targetDied) {
-                    tryCounterAttackOnce(out, gameState, attackerTile, attacker, clickedTile, target);
+                if (target.getHealth() > 0) {
+                	BasicCommands.playUnitAnimation(out, target, UnitAnimationType.attack);
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+                    attacker.decreaseHealth(gameState, out, target.getAttack());
+    				BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
                 }
 
                 attacker.setCanAttack(false);
@@ -243,46 +246,45 @@ public class TileClicked implements EventProcessor {
             else if (enemy && attacker.getCanAttack() && attacker.getCanMove()) {
 
                 Tile landingTile = null;
-                int minDistance = 999;
+                
 
                 // Scan 8 directions around the enemy for a valid landing spot
                 int[][] directions = {{0,1},{0,-1},{1,0},{-1,0},{1,1},{1,-1},{-1,1},{-1,-1}};
                 for (int[] dir : directions) {
-                    Tile candidate = gameState.board.getTile(
-                        clickedTile.getTilex() + dir[0],
-                        clickedTile.getTiley() + dir[1]);
+                        int candidateX = clickedTile.getTilex() + dir[0];
+                        int candidateY = clickedTile.getTiley() + dir[1];
+                        
+                        Tile candidate = gameState.board.getTile(candidateX, candidateY);
 
                     // Call the standard rule to check if we can legally move there
-                    if (candidate != null && gameState.highlightManager.isValidMove(attackerTile, candidate, gameState)) {
-                        int dx = Math.abs(candidate.getTilex() - attackerTile.getTilex());
-                        int dy = Math.abs(candidate.getTiley() - attackerTile.getTiley());
-                        int dist = dx + dy;
-                        if (dist < minDistance) {
-                            minDistance = dist;
+                        if (candidate != null && gameState.highlightManager.isValidMove(attackerTile.getTilex(), attackerTile.getTiley(), candidateX, candidateY, candidate, gameState)) {
                             landingTile = candidate;
+                            break;
                         }
                     }
-                }
+                
                 if (landingTile != null) {
 
-                    gameState.highlightManager.clearHighlights(clickedTile, out);
+                    gameState.highlightManager.clearHighlights(out);
 
+                    // Move
                     BasicCommands.moveUnitToTile(out, attacker, landingTile);
-
                     landingTile.setUnit(attacker);
                     attackerTile.setUnit(null);
                     attacker.setPositionByTile(landingTile);
-
                     try { Thread.sleep(1500); } catch (Exception e) {}
 
-                    int ms = BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
-                    try { Thread.sleep(ms); } catch (Exception e) {}
-
-                    boolean targetDied = applyDamageAndHandleDeath(out, gameState, clickedTile, target, attacker.getAttack());
-
+                    // Attack
+                    BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+                    target.decreaseHealth(gameState, out, attacker.getAttack());
+                    
                     // (Story Card 12) Counterattack after move
-                    if (!targetDied) {
-                        tryCounterAttackOnce(out, gameState, landingTile, attacker, clickedTile, target);
+                    if (target.getHealth() > 0 && isAdjacent8(landingTile, clickedTile)) {
+                    	BasicCommands.playUnitAnimation(out, target, UnitAnimationType.attack);
+                        try { Thread.sleep(1000); } catch (Exception e) {}
+                        attacker.decreaseHealth(gameState, out, target.getAttack());
+        				BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
                     }
 
                     attacker.setCanAttack(false);
@@ -304,8 +306,8 @@ public class TileClicked implements EventProcessor {
                 Unit unit = startTile.getUnit();
 
                 // Directly call the standard rule in HighlightManager to validate the move
-                if (unit.getCanMove() && gameState.highlightManager.isValidMove(startTile, clickedTile, gameState)) {
-                    gameState.highlightManager.clearHighlights(clickedTile, out);
+                if (unit.getCanMove() && gameState.highlightManager.isValidMove(startTile.getTilex(), startTile.getTiley(), clickedTile.getTilex(), clickedTile.getTiley(), clickedTile, gameState)) {
+                    gameState.highlightManager.clearHighlights(out);
                     BasicCommands.moveUnitToTile(out, unit, clickedTile);
                     clickedTile.setUnit(unit);
                     startTile.setUnit(null);
@@ -319,10 +321,17 @@ public class TileClicked implements EventProcessor {
         // =========================
         // Highlight selection
         // =========================
-        gameState.highlightManager.clearHighlights(clickedTile, out);
+        gameState.highlightManager.clearHighlights(out);
 
         if (clickedTile.hasUnit()) {
             Unit unit = clickedTile.getUnit();
+            
+         // --- DEBUG LINES ---
+            String debugMsg = String.format("Tile: %d,%d | Unit: %d,%d", 
+                clickedTile.getTilex(), clickedTile.getTiley(), 
+                unit.getPosition().getTilex(), unit.getPosition().getTiley());
+            BasicCommands.addPlayer1Notification(out, debugMsg, 2);
+            // -------------------
 
             if (unit.getPlayer() == gameState.player1) {
 
@@ -352,6 +361,10 @@ public class TileClicked implements EventProcessor {
         return Math.max(dx, dy) == 1; // include diagonal
     }
 
+  /* Simplified and moved logic to (decreaseHealth)
+   *  inside of Unit class for better reusability  
+
+    
     // (Story Card 13) Unified Damage + Death Handling
     private boolean applyDamageAndHandleDeath(ActorRef out,
                                              GameState gameState,
@@ -424,6 +437,7 @@ public class TileClicked implements EventProcessor {
 
         applyDamageAndHandleDeath(out, gameState, attackerTile, attacker, defender.getAttack());
     }
+    */
     
     // Map the card names to the monster model configuration files
     private String getUnitConfigFile(String cardName) {
@@ -448,4 +462,5 @@ public class TileClicked implements EventProcessor {
             default: return utils.StaticConfFiles.wraithling; 
         }
     }
+    
 }

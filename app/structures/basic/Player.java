@@ -1,6 +1,8 @@
 package structures.basic;
 
 import structures.basic.Card;
+
+import java.util.ArrayList;
 import java.util.List;
 import akka.actor.ActorRef;
 import commands.BasicCommands;
@@ -15,6 +17,7 @@ import utils.StaticConfFiles;
 public class Player {
 
     private int health;
+    private int maxHealth;
     private int mana;
     private int turnNumber;
     private String avatarConfigFile;
@@ -22,6 +25,7 @@ public class Player {
     // deck and hand management
     private Deck deck;
     private HandManager handManager;
+    private List<Card> hand; 
 
     public Player() {
         super();
@@ -30,11 +34,13 @@ public class Player {
         this.turnNumber = 1;
         this.deck = new Deck();
         this.handManager = new HandManager();
+        this.hand = getHandManager().getHandCards();
     }
 
     public Player(int health, int mana) {
         super();
         this.health = health;
+        this.maxHealth = health;
         this.mana = mana;
         this.deck = new Deck();
         this.handManager = new HandManager();
@@ -42,6 +48,10 @@ public class Player {
 
     public int getHealth() { return health; }
     public void setHealth(int health) { this.health = health; }
+    
+    // Getters and setters for max health
+    public int getMaxHealth() { return health; }
+    public void setMaxHealth(int health) { this.health = health; }
 
     public int getMana() { return mana; }
     public void setMana(int mana) { this.mana = mana; }
@@ -108,4 +118,5 @@ public class Player {
     // Getters
     public Deck getDeck() { return deck; }
     public HandManager getHandManager() { return handManager; }
+    public ArrayList<Card> getHand() {return (ArrayList<Card>) hand; }
 }

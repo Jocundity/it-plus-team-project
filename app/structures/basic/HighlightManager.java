@@ -6,6 +6,7 @@ import structures.GameState;
 import java.util.ArrayList;
 import java.util.Collections;
 import structures.basic.Unit;
+import structures.basic.TargetingSystem;
 
 public class HighlightManager {
 	
@@ -17,27 +18,33 @@ public class HighlightManager {
 	}
 	
 	// Core movement validation rule
-	public boolean isValidMove(Tile start, Tile target, GameState gs) {
-		int dx = Math.abs(start.getTilex() - target.getTilex());
-		int dy = Math.abs(start.getTiley() - target.getTiley());
-
+	public boolean isValidMove(int startX, int startY, int targetX, int targetY,  Tile target, GameState gs) {
+		// Check for out of bounds movement
+		if (target == null) return false;
+		
+		// Calculate horizontal and vertical distances
+		int dx = Math.abs(startX - targetX);
+		int dy = Math.abs(startY - targetY);
+		
 		// The target tile must not have a unit, and cannot be the starting tile
 		if (target.hasUnit() || (dx == 0 && dy == 0)) return false;
 
 		// 1. Allow 1 tile adjacent movement (up, down, left, right)
 		if (dx + dy == 1) return true;
+		
 		// 2. Allow 1 tile diagonal movement
 		if (dx == 1 && dy == 1) return true;
 
 		// 3. Allow 2 tiles straight movement, provided the middle tile is empty (no moving through units)
 		if (dx == 2 && dy == 0) {
-			int midX = (start.getTilex() + target.getTilex()) / 2;
-			Tile midTile = gs.board.getTile(midX, start.getTiley());
+			int midX = (startX + targetX) / 2;
+			Tile midTile = gs.board.getTile(midX, startY);
 			return midTile != null && !midTile.hasUnit();
 		}
+		
 		if (dx == 0 && dy == 2) {
-			int midY = (start.getTiley() + target.getTiley()) / 2;
-			Tile midTile = gs.board.getTile(start.getTilex(), midY);
+			int midY = (startY + targetY) / 2;
+			Tile midTile = gs.board.getTile(startX, midY);
 			return midTile != null && !midTile.hasUnit();
 		}
 
@@ -45,19 +52,38 @@ public class HighlightManager {
 		return false;
 	}
 	
+	
 	// (Story card 6) Highlight valid movement range
 		public void highlightMovementRange(Tile tile, GameState gameState, ActorRef out) {
-			for (int x = 0; x <= 9; x++) {
-				for (int y = 0; y <= 5; y++) {
+			// Get position of starting tile
+			int startX = tile.getTilex();
+			int startY = tile.getTiley();
+			
+			ArrayList<Tile> validMoves = new ArrayList<Tile>();
+			
+			// Loop over board and add valid tiles to array list
+			for (int x = 1; x <= 9; x++) {
+				for (int y = 1; y <= 5; y++) {
+					// Do not include starting tile
+					if (x == startX && y == startY) continue;
+					
 					Tile targetTile = gameState.board.getTile(x, y);
-					if (targetTile != null && isValidMove(tile, targetTile, gameState)) {
-						BasicCommands.drawTile(out, targetTile, 1); // 1 = white highlight
-						try { Thread.sleep(80); } catch (Exception e) {} // Slightly reduce delay for smoother rendering
-						targetTiles.add(targetTile);
+					if (targetTile != null && isValidMove(startX, startY, x, y, targetTile, gameState)) {
+						validMoves.add(targetTile);
 					}
 				}
 			}
+			
+			// Draw tiles
+			for (Tile t : validMoves) {
+				BasicCommands.drawTile(out, t, 1); // use white for movement
+				targetTiles.add(t);
+				try { Thread.sleep(40); } catch (Exception e) {}
+				
+			}
 		}
+		
+	
 		
 		// (Story card 7) Accurately identify attackable enemies
 		public void highlightAttackTargets(Tile unitTile, GameState gameState, ActorRef out) {
@@ -68,8 +94,8 @@ public class HighlightManager {
 			int ax = unitTile.getTilex();
 			int ay = unitTile.getTiley();
 
-			for (int x = 0; x <= 9; x++) {
-				for (int y = 0; y <= 5; y++) {
+			for (int x = 1; x <= 9; x++) {
+				for (int y = 1; y <= 5; y++) {
 					Tile targetTile = gameState.board.getTile(x, y);
 					if (targetTile == null || !targetTile.hasUnit() || targetTile.getUnit().getPlayer() == gameState.player1) continue;
 
@@ -89,9 +115,12 @@ public class HighlightManager {
 						boolean canReach = false;
 						int[][] directions = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
 						for (int[] dir : directions) {
-							Tile landingTile = gameState.board.getTile(ex + dir[0], ey + dir[1]);
-							// Directly call our standard movement validation method!
-							if (landingTile != null && isValidMove(unitTile, landingTile, gameState)) {
+							int landingX = ex + dir[0];
+							int landingY = ey + dir[1];
+							
+							Tile landingTile = gameState.board.getTile(landingX, landingY);
+							
+							if (landingTile != null && isValidMove(unitTile.getTilex(), unitTile.getTiley(), landingX, landingY, landingTile, gameState)) {
 								canReach = true;
 								break;
 							}
@@ -106,8 +135,41 @@ public class HighlightManager {
 			}
 		}
 		
+		
+	// Highlight all tiles containing units belonging to the player
+	public void highlightAllFriendlyUnitTiles(GameState gameState, ActorRef out, Player player) {
+		ArrayList<Tile> friendlyTiles = TargetingSystem.getFriendlyUnitTiles(gameState, player);
+		
+		// Draw each tile in red
+		for (Tile tile : friendlyTiles) {
+			BasicCommands.drawTile(out, tile, 2);
+			targetTiles.add(tile);
+			try { Thread.sleep(80); } catch (Exception e) {}
+		}
+	}
+	
+	// Highlight all tiles containing units that belong to the player
+	public void highlightAllEnemyUnitTiles(GameState gameState, ActorRef out, Player player) {
+		ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, player);
+		
+		// Draw each tile in red
+		for (Tile tile : enemyTiles) {
+			BasicCommands.drawTile(out, tile, 2);
+			targetTiles.add(tile);
+			try { Thread.sleep(80); } catch (Exception e) {}
+		}
+	}
+	
+	// Highlight single tile in red
+	public void highlightSingleTileRed(Tile tile, ActorRef out) {
+		BasicCommands.drawTile(out, tile, 2);
+		targetTiles.add(tile);
+		try { Thread.sleep(80); } catch (Exception e) {}
+	}
+		
+		
 		// Reverts Board back to default state (Story card 8) [FIXED]
-	public void clearHighlights(Tile tile, ActorRef out) {
+	public void clearHighlights(ActorRef out) {
 		// Always clear whatever was highlighted before
 			for (Tile t : targetTiles) {
 				if (t != null) {
@@ -120,11 +182,11 @@ public class HighlightManager {
 	        // (Story card 32) highlight the summonable legal tiles
 	        public void highlightSummonableTiles(GameState gameState, ActorRef out) {
 	            // Clear all existing tile highlights on the game board
-	            clearHighlights(null, out);
+	            clearHighlights(out);
 	    
 	            // Scan entire board to find Player 1's units
-	            for (int x = 0; x <= 9; x++) {
-	                for (int y = 0; y <= 5; y++) {
+	            for (int x = 1; x <= 9; x++) {
+	                for (int y = 1; y <= 5; y++) {
 	                    Tile t = gameState.board.getTile(x, y);
 	            
 	                    // Check if current tile contains a friendly (Player 1) unit
