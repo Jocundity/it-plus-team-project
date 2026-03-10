@@ -214,7 +214,7 @@ public class HighlightManager {
             public void highlightSpellTargets(GameState gameState, ActorRef out) {
 
                 // Clear previous highlights first
-                clearHighlights(null, out);
+                clearHighlights(out);
 
                 for (int x = 0; x <= 9; x++) {
                     for (int y = 0; y <= 5; y++) {
