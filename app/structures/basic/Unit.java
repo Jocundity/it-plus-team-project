@@ -148,6 +148,24 @@ public class Unit {
 		
 	}
 	
+	// Add permanent buff method for cards like Silverguard Squire (Story 17)
+	public void applyPermanentBuff(ActorRef out, int atkAmount, int hpAmount) {
+		// Increase Attack
+		this.attack += atkAmount;
+		BasicCommands.setUnitAttack(out, this, this.attack);
+		
+		// Increase Max Health and current Health
+		this.maxHealth += hpAmount;
+		this.health += hpAmount;
+		BasicCommands.setUnitHealth(out, this, this.health);
+		
+		// If this unit is an Avatar, we must sync the Player object's health as well
+		if (this instanceof Avatar) {
+			this.player.setHealth(this.health);
+			this.player.showLife(out);
+		}
+	}
+	
 	// Method to decrease health without going below zero
 		public void decreaseHealth(GameState gameState, ActorRef out, int amount) {
 			if (health - amount <= 0) {
@@ -187,7 +205,7 @@ public class Unit {
     	return maxHealth;
 	}
 
-	public void setMaxHealth(int health) {
+	public void setMaxHealth(int maxHealth) { 
     	this.maxHealth = maxHealth;
 	}
 	

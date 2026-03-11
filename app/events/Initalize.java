@@ -37,6 +37,9 @@ public class Initalize implements EventProcessor {
         gameState.board = new Board();
         gameState.board.drawBoard(out);
 
+        // Allow the front-end ample time to render the 45 tiles to prevent message channel congestion 
+        try { Thread.sleep(1000); } catch (Exception e) {}
+        
         /* Creates new player objects,
          * sets initial health and mana (Story card 3) */
         gameState.player1 = new Player();
@@ -60,8 +63,12 @@ public class Initalize implements EventProcessor {
         player1Avatar.setCanMove(true);
         player1Avatar.setCanAttack(true);
         
+        player1Avatar.setAttack(2);
+        player1Avatar.setMaxHealth(20);
+        player1Avatar.setHealth(20);
 
         BasicCommands.drawTile(out, tile1, 0);
+        try { Thread.sleep(200); } catch (Exception e) {}
         player1Avatar.drawUnit(out, tile1);
         
 
@@ -70,7 +77,13 @@ public class Initalize implements EventProcessor {
         player2Avatar.setPlayer(gameState.player2);
         tile2.setUnit(player2Avatar);
         player2Avatar.setPositionByTile(tile2);
+        
+        player2Avatar.setAttack(2);
+        player2Avatar.setMaxHealth(20);
+        player2Avatar.setHealth(20);
+        
         BasicCommands.drawTile(out, tile2, 0);
+        try { Thread.sleep(200); } catch (Exception e) {}
         player2Avatar.drawUnit(out, tile2);
 
         try {
