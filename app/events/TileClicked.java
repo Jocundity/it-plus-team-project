@@ -11,6 +11,8 @@ import structures.basic.Unit;
 import structures.basic.Avatar;
 import structures.basic.Player;
 import structures.basic.Card;
+import utils.BasicObjectBuilders;
+import utils.StaticConfFiles;
 
 public class TileClicked implements EventProcessor {
 
@@ -46,7 +48,10 @@ public class TileClicked implements EventProcessor {
             }
 
             if (isValidSummonTile) {
-                Card cardToSummon = gameState.selectedCard;
+                
+            	gameState.highlightManager.clearHighlights(out);
+            	
+            	Card cardToSummon = gameState.selectedCard;
                 
                 // Deduct mana cost from player and refresh mana UI display
                 gameState.player1.setMana(gameState.player1.getMana() - cardToSummon.getManacost());
@@ -57,12 +62,15 @@ public class TileClicked implements EventProcessor {
                 try { Thread.sleep(500); } catch (Exception e) {}
                 
                 // Resolve unit config file by card name
-                String confFile = getUnitConfigFile(cardToSummon.getCardname());
+                String confFile = utils.StaticConfFiles.getUnitConf(cardToSummon.getCardname());
                 
-                // Create a monster unit and set it to belong to Player 1
+                // Determine who the new unit belongs to based on whose turn it is currently.
+                Player currentPlayer = gameState.isPlayer1Turn ? gameState.player1 : gameState.player2;
+                
+                // Create a monster unit and set it to belong to the current player
                 int unitID = Math.abs(cardToSummon.getCardname().hashCode() + clickedTile.getTilex() + clickedTile.getTiley());
                 Unit newUnit = utils.BasicObjectBuilders.loadUnit(confFile, unitID, Unit.class);
-                newUnit.setPlayer(gameState.player1);
+                newUnit.setPlayer(currentPlayer);
                 
                 // Place unit on target tile and render to game view
                 newUnit.setPositionByTile(clickedTile);
@@ -73,8 +81,12 @@ public class TileClicked implements EventProcessor {
                 // Sync unit stats (ATK/HP) with card values and update UI
                 newUnit.setAttack(cardToSummon.getBigCard().getAttack());
                 newUnit.setHealth(cardToSummon.getBigCard().getHealth());
+                newUnit.setMaxHealth(cardToSummon.getBigCard().getHealth());
                 BasicCommands.setUnitAttack(out, newUnit, newUnit.getAttack());
                 BasicCommands.setUnitHealth(out, newUnit, newUnit.getHealth());
+                
+                // Trigger Opening Gambit for Story Card 17
+                triggerOpeningGambit(out, gameState, newUnit, cardToSummon);
                 
                 // Newly summoned units are "exhausted" (can't move/attack) for the current turn
                 newUnit.setCanMove(false);
@@ -82,10 +94,7 @@ public class TileClicked implements EventProcessor {
                 
                 // Remove consumed card from player's hand
                 gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
-                
-                // Safely obtain cards
-                gameState.highlightManager.clearHighlights(out);
-                
+                                
                 // Refresh hand UI: Clear all hand slots on the screen
                 for (int i = 1; i <= 6; i++) {
                     BasicCommands.deleteCard(out, i);
@@ -439,28 +448,80 @@ public class TileClicked implements EventProcessor {
     }
     */
     
-    // Map the card names to the monster model configuration files
-    private String getUnitConfigFile(String cardName) {
-        switch (cardName) {
-            // Abyssian (Player 1)'s monster
-            case "Bad Omen": return "conf/gameconfs/units/bad_omen.json";
-            case "Gloom Chaser": return "conf/gameconfs/units/gloom_chaser.json";
-            case "Shadow Watcher": return "conf/gameconfs/units/shadow_watcher.json";
-            case "Nightsorrow Assassin": return "conf/gameconfs/units/nightsorrow_assassin.json";
-            case "Rock Pulveriser": return "conf/gameconfs/units/rock_pulveriser.json";
-            case "Bloodmoon Priestess": return "conf/gameconfs/units/bloodmoon_priestess.json";
-            case "Shadowdancer": return "conf/gameconfs/units/shadowdancer.json";
-        
-            // Lyonar (Player 2)'s monster
-            case "Skyrock Golem": return "conf/gameconfs/units/skyrock_golem.json";
-            case "Swamp Entangler": return "conf/gameconfs/units/swamp_entangler.json";
-            case "Silverguard Knight": return "conf/gameconfs/units/silverguard_knight.json";
-            case "Saberspine Tiger": return "conf/gameconfs/units/saberspine_tiger.json";
-            case "Young Flamewing": return "conf/gameconfs/units/young_flamewing.json";
-            case "Silverguard Squire": return "conf/gameconfs/units/silverguard_squire.json";
-            case "Ironcliff Guardian": return "conf/gameconfs/units/ironcliff_guardian.json";
-            default: return utils.StaticConfFiles.wraithling; 
+    // Find the avatar unit belonging to the specified player
+    private Unit findAvatar(GameState gameState, Player player) {
+
+        for (int x = 0; x <= 9; x++) {
+            for (int y = 0; y <= 5; y++) {
+
+                Tile tile = gameState.board.getTile(x, y);
+
+                if (tile != null && tile.hasUnit()) {
+
+                    Unit unit = tile.getUnit();
+
+                    if (unit instanceof Avatar && unit.getPlayer() == player) {
+                        return unit;
+                    }
+                }
+            }
         }
+
+        return null;
     }
     
+    // Story Card 17 Opening Gambit Logic
+    private void triggerOpeningGambit(ActorRef out, GameState gameState, Unit summonedUnit, Card card) {
+        String cardName = card.getCardname();
+        int x = summonedUnit.getPosition().getTilex();
+        int y = summonedUnit.getPosition().getTiley();
+
+     // 1. Gloom Chaser
+        if (cardName.equals("Gloom Chaser")) {
+            int targetX = x - 1; 
+            Tile behindTile = gameState.board.getTile(targetX, y);
+            if (behindTile != null && !behindTile.hasUnit()) {
+                Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, summonedUnit.getId() + 100, Unit.class);
+                wraithling.setPlayer(gameState.player1);
+                
+                // Set the unit's attributes in the backend data first
+                wraithling.setAttack(1);
+                wraithling.setHealth(1);
+                wraithling.setMaxHealth(1);
+                
+                wraithling.setPositionByTile(behindTile);
+                behindTile.setUnit(wraithling);
+                
+                BasicCommands.playEffectAnimation(out, utils.BasicObjectBuilders.loadEffect(utils.StaticConfFiles.f1_summon), behindTile);
+                try { Thread.sleep(100); } catch (Exception e) {} // Wait for the summoning effect animation
+                
+                // Instruct the front-end to draw the unit model
+                BasicCommands.drawUnit(out, wraithling, behindTile);
+                try { Thread.sleep(100); } catch (Exception e) {} // Wait 100ms to allow the front-end to finish rendering the model
+                
+                // Update Attack UI
+                BasicCommands.setUnitAttack(out, wraithling, wraithling.getAttack());
+                try { Thread.sleep(100); } catch (Exception e) {} // Separate the UI update commands to prevent asynchronous overlapping
+                
+                // Update Health UI
+                BasicCommands.setUnitHealth(out, wraithling, wraithling.getHealth());
+            }
+        }
+        
+        // 2. Nightsorrow Assassin
+        else if (cardName.equals("Nightsorrow Assassin")) {
+            int[][] neighbors = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
+            for (int[] dir : neighbors) {
+                Tile adjTile = gameState.board.getTile(x + dir[0], y + dir[1]);
+                if (adjTile != null && adjTile.hasUnit()) {
+                    Unit target = adjTile.getUnit();
+                    
+                    if (target.getPlayer() != summonedUnit.getPlayer() && target.getHealth() < target.getMaxHealth()) {
+                        target.decreaseHealth(gameState, out, target.getHealth());
+                        break; 
+                    }
+                }
+            }
+        }
+    }
 }
