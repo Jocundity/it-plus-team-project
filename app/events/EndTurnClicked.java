@@ -96,8 +96,8 @@ public class EndTurnClicked implements EventProcessor {
             		gameState.player1.startTurn(out);
             		
             		// Ensure that Player 1's units can move and attack
-            		for (int x = 0; x < 9; x++) {
-            			for (int y = 0; y < 5; y++) {
+            		for (int x = 0; x <= 9; x++) {
+            			for (int y = 0; y <= 5; y++) {
             				Tile tile = gameState.board.getTile(x, y);
             				if (tile != null && tile.hasUnit()) {
             					Unit u = tile.getUnit();

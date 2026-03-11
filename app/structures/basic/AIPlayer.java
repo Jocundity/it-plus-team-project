@@ -106,17 +106,13 @@ public class AIPlayer extends Player {
     	// Added Unit Summoning logic for AI (Story Card 17)
         else {
             Tile targetTile = null;
-
-            System.out.println("====== DEBUG: AI 正在尝试召唤 " + cardName + " ======");
-
-            try {
+            
                 // Smart placement logic specifically for Silverguard Squire 
                 if (cardName.equals("Silverguard Squire")) {
                     Unit avatar = findAIAvatar(gameState);
                     if (avatar != null) {
                         int ax = avatar.getPosition().getTilex();
                         int ay = avatar.getPosition().getTiley();
-                        System.out.println("DEBUG: AI 找到了主帅，坐标为: (" + ax + ", " + ay + ")");
                         
                         Tile frontTile = gameState.board.getTile(ax - 1, ay); // Left of Player 2 Avatar
                         Tile backTile = gameState.board.getTile(ax + 1, ay);  // Right of Player 2 Avatar
@@ -124,23 +120,16 @@ public class AIPlayer extends Player {
                         // Priority 1: Place in front
                         if (frontTile != null && !frontTile.hasUnit()) {
                             targetTile = frontTile;
-                            System.out.println("DEBUG: 决定放在主帅前方 (" + (ax-1) + ", " + ay + ")");
                         } 
                         // Priority 2: Place behind
                         else if (backTile != null && !backTile.hasUnit()) {
                             targetTile = backTile;
-                            System.out.println("DEBUG: 决定放在主帅后方 (" + (ax+1) + ", " + ay + ")");
-                        } else {
-                            System.out.println("DEBUG: 主帅前后都被占满了！转入常规找位逻辑。");
+                        } 
                         }
-                    } else {
-                        System.out.println("DEBUG: 🚨 警告：AI 找不到自己的主帅！");
-                    }
-                }
+                    } 
                 
-                // --- 常规 AI 找位逻辑 (兜底策略) ---
+                // Default AI placement logic
                 if (targetTile == null) {
-                    System.out.println("DEBUG: 正在执行常规找位逻辑...");
                     outerloop:
                     for (int x = 1; x <= 9; x++) {
                         for (int y = 1; y <= 5; y++) {
@@ -149,10 +138,8 @@ public class AIPlayer extends Player {
                                 int[][] directions = {{0,1}, {0,-1}, {1,0}, {-1,0}, {1,1}, {1,-1}, {-1,1}, {-1,-1}};
                                 for (int[] dir : directions) {
                                     Tile adj = gameState.board.getTile(x + dir[0], y + dir[1]);
-                                    // 💡 替换为 gameState.player2 更安全，避免对象引用地址不一致导致判定失败
                                     if (adj != null && adj.hasUnit() && adj.getUnit().getPlayer() == gameState.player2) {
                                         targetTile = t;
-                                        System.out.println("DEBUG: 常规逻辑找到位置: (" + x + ", " + y + ")");
                                         break outerloop;
                                     }
                                 }
@@ -161,15 +148,13 @@ public class AIPlayer extends Player {
                     }
                 }
 
-                // 💡 终极兜底：如果连常规逻辑都找不到位置（比如无路可走），强行找个空位防止吞牌
+                // Ultimate fallback logic to prevent skipped summons if no adjacent tiles are available
                 if (targetTile == null) {
-                    System.out.println("DEBUG: 🚨 严重警告：常规找位也失败！开启全图扫描空位...");
                     for (int x = 1; x <= 9; x++) {
                         for (int y = 1; y <= 5; y++) {
                             Tile t = gameState.board.getTile(x, y);
                             if (t != null && !t.hasUnit()) {
                                 targetTile = t;
-                                System.out.println("DEBUG: 终极兜底找到空位: (" + x + ", " + y + ")");
                                 break;
                             }
                         }
@@ -177,17 +162,15 @@ public class AIPlayer extends Player {
                     }
                 }
 
-                // 执行召唤过程
+                // Execute summon
                 if (targetTile != null) {
                     int unitID = Math.abs(cardName.hashCode() + targetTile.getTilex() + targetTile.getTiley());
                     String confFile = utils.StaticConfFiles.getUnitConf(cardName);
                     
-                    if (confFile == null) {
-                        System.out.println("DEBUG: 🚨 错误：找不到卡牌的 confFile 配置文件！");
-                    } else {
+                    if (confFile != null) {
                         Unit newUnit = BasicObjectBuilders.loadUnit(confFile, unitID, Unit.class);
                         
-                        newUnit.setPlayer(gameState.player2); // 💡 显式使用 gameState.player2
+                        newUnit.setPlayer(gameState.player2); 
                         newUnit.setPositionByTile(targetTile);
                         targetTile.setUnit(newUnit);
 
@@ -205,24 +188,16 @@ public class AIPlayer extends Player {
                         try { Thread.sleep(100); } catch (InterruptedException e) {} 
 
                         BasicCommands.setUnitHealth(out, newUnit, newUnit.getHealth());
-
-                        System.out.println("DEBUG: 渲染成功！准备触发战吼...");
                         
                         // Trigger AI Opening Gambit
                         triggerAIOpeningGambit(out, gameState, newUnit, card);
                         
                         newUnit.setCanMove(false);
                         newUnit.setCanAttack(false);
-                        System.out.println("====== DEBUG: " + cardName + " 完整召唤流程结束 ======");
                     }
-                } else {
-                    System.out.println("DEBUG: 🚨 灾难性错误：全图都满了，彻底无法放置单位！");
-                }
-            } catch (Exception e) {
-                System.out.println("DEBUG: 🚨 召唤过程中发生代码异常 (Exception)！");
-                e.printStackTrace(); // 把具体报错打在控制台上
             }
         }
+        
     	
     	// Reduce mana upon successful play
     	this.setMana(getMana() - card.getManacost());
@@ -271,7 +246,6 @@ public class AIPlayer extends Player {
                         
                         // Apply the permanent buff (+1/+1) to the allied unit
                         targetUnit.applyPermanentBuff(out, 1, 1);
-                        System.out.println("DEBUG: 已成功给 (" + pos[0] + ", " + pos[1] + ") 的单位加上 +1/+1 Buff！");
                     }
                 }
             }
