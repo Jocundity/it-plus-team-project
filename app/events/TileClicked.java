@@ -70,6 +70,7 @@ public class TileClicked implements EventProcessor {
                 // Create a monster unit and set it to belong to the current player
                 int unitID = Math.abs(cardToSummon.getCardname().hashCode() + clickedTile.getTilex() + clickedTile.getTiley());
                 Unit newUnit = utils.BasicObjectBuilders.loadUnit(confFile, unitID, Unit.class);
+                newUnit.setConfigFile(confFile);
                 newUnit.setPlayer(currentPlayer);
                 
                 // Place unit on target tile and render to game view
@@ -144,7 +145,8 @@ public class TileClicked implements EventProcessor {
 
                     // Add a new Wraithling unit to the board at the clicked tile
                     // 999 is just a temporary ID
-                    structures.basic.Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, 999, structures.basic.Unit.class); 
+                    structures.basic.Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, 999, structures.basic.Unit.class);
+		    wraithling.setConfigFile(utils.StaticConfFiles.wraithling); 
                     wraithling.setPlayer(gameState.player1);
                     wraithling.setPositionByTile(clickedTile);
                     clickedTile.setUnit(wraithling); 
@@ -482,6 +484,7 @@ public class TileClicked implements EventProcessor {
             Tile behindTile = gameState.board.getTile(targetX, y);
             if (behindTile != null && !behindTile.hasUnit()) {
                 Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, summonedUnit.getId() + 100, Unit.class);
+		wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
                 wraithling.setPlayer(gameState.player1);
                 
                 // Set the unit's attributes in the backend data first
