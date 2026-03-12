@@ -1,5 +1,7 @@
 package structures.basic;
 
+
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -179,6 +181,7 @@ public class Unit {
 				try { Thread.sleep(2000); } catch (Exception e) {}
 				
 				Tile deathTile = this.tile;
+				triggerUnitDeath(gameState, out);
 				BasicCommands.deleteUnit(out, this);
 				try { Thread.sleep(1000); } catch (Exception e) {}
 				
@@ -215,6 +218,14 @@ public class Unit {
 
 	public void setAttack(int attack) {
     	this.attack = attack;
+	}
+
+	public String getConfigFile() {
+    	return configFile;
+	}
+
+	public void setConfigFile(String configFile) {
+    	this.configFile = configFile;
 	}
 	/**
 	 * This command sets the position of the Unit to a specified
@@ -287,4 +298,63 @@ public class Unit {
 	public void setIsStunned(boolean val) {
         this.isStunned = val;
     }
+
+	// Story Card 18: Unit Death Trigger
+	private void triggerUnitDeath(GameState gameState, ActorRef out) {
+
+		Tile[][] tiles = gameState.board.getTiles();
+
+		for (int row = 0; row < tiles.length; row++) {
+			for (int col = 0; col < tiles[row].length; col++) {
+
+				Tile t = tiles[row][col];
+
+				if (t != null && t.hasUnit()) {
+					Unit u = t.getUnit();
+
+					// Shadow Watcher: gain +1/+1 when ANY unit dies
+					if (u.getConfigFile() != null && u.getConfigFile().contains("shadow_watcher")) {
+						u.applyPermanentBuff(out, 1, 1);
+					}
+
+					// Bloodmoon Priestess: summon Wraithling when ANY unit dies
+					if (u.getConfigFile() != null && u.getConfigFile().contains("bloodmoon_priestess")) {
+
+						int[][] dirs = {{0,1},{0,-1},{1,0},{-1,0}};
+
+						for (int[] d : dirs) {
+							Tile adj = gameState.board.getTile(
+								u.getPosition().getTilex() + d[0],
+								u.getPosition().getTiley() + d[1]
+							);
+
+							if (adj != null && !adj.hasUnit()) {
+
+								Unit wraith = utils.BasicObjectBuilders.loadUnit(
+									utils.StaticConfFiles.wraithling,
+									u.getId() + 1000,
+									Unit.class
+								);
+
+								wraith.setPlayer(u.getPlayer());
+								wraith.setAttack(1);
+								wraith.setHealth(1);
+								wraith.setMaxHealth(1);
+
+								wraith.setPositionByTile(adj);
+								adj.setUnit(wraith);
+
+								BasicCommands.drawUnit(out, wraith, adj);
+								BasicCommands.setUnitAttack(out, wraith, 1);
+								BasicCommands.setUnitHealth(out, wraith, 1);
+
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
 }
+	
