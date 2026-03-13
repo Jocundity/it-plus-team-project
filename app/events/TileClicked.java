@@ -121,16 +121,53 @@ public class TileClicked implements EventProcessor {
         
         // Spell Targeting Logic
         if (gameState.isSpellTargeting && gameState.handPositionClicked != -1) {
-            
-            // 
+
             Tile[][] allTiles = gameState.board.getTiles();
             int rows = allTiles.length;
             int cols = allTiles[0].length;
 
-            // Only allow targeting enemy units
-            if (clickedTile.hasUnit() && clickedTile.getUnit().getPlayer() != gameState.player1) {
+            Card spellCard = gameState.player1.getHandManager().getHandCards().get(gameState.handPositionClicked - 1);
+
+            if (spellCard.getCardname().equals("Wraithling Swarm")) {
+                if (clickedTile.hasUnit()) {
+                    BasicCommands.addPlayer1Notification(out, "Invalid Target! Must be empty.", 2);
+                    return;
+                }
                 
-                Card spellCard = gameState.player1.getHandManager().getHandCards().get(gameState.handPositionClicked - 1);
+                summonWraithlingAt(out, gameState, clickedTile);
+
+                // Scan the board to summon up to 2 additional Wraithlings on available empty tiles
+                int summonedCount = 1;
+                for (int x = 0; x < 15 && summonedCount < 3; x++) {
+                    for (int y = 0; y < 15 && summonedCount < 3; y++) {
+                        try {
+                            Tile t = gameState.board.getTile(x, y);
+                            if (t != null && !t.hasUnit() && t != clickedTile) {
+                                summonWraithlingAt(out, gameState, t);
+                                summonedCount++;
+                            }
+                        } catch (Exception e) {
+                            // Silently ignore array out-of-bounds
+                        }
+                    }
+                }
+                BasicCommands.addPlayer1Notification(out, "Swarm Unleashed!", 2);
+
+                // Deduct mana, update UI, and remove the card from hand
+                gameState.player1.setMana(gameState.player1.getMana() - spellCard.getManacost());
+                gameState.player1.showMana(out);
+                BasicCommands.deleteCard(out, gameState.handPositionClicked);
+                gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
+
+                for (int i = 1; i <= 6; i++) { BasicCommands.deleteCard(out, i); }
+                for (int i = 0; i < gameState.player1.getHandManager().getHandCards().size(); i++) {
+                    Card c = gameState.player1.getHandManager().getHandCards().get(i);
+                    BasicCommands.drawCard(out, c, i + 1, 0);
+                }
+            }
+            // For targeted damage/stun spells, validate that the clicked tile has an enemy unit and then apply the effect
+            else if (clickedTile.hasUnit() && clickedTile.getUnit().getPlayer() != gameState.player1) {
+                
                 structures.basic.Unit targetUnit = clickedTile.getUnit();
 
                 // Execute [28] Dark Terminus
@@ -471,7 +508,40 @@ public class TileClicked implements EventProcessor {
 
         return null;
     }
-    
+
+    // Story Card 30 Wraithling Swarm Summoning Logic
+    private void summonWraithlingAt(ActorRef out, GameState gameState, Tile tile) {
+        // Generate a unique ID using hashcode and coordinates to prevent front-end rendering conflicts
+        int uniqueId = 6000 + (tile.getTilex() * 100) + tile.getTiley(); 
+        
+        Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, uniqueId, Unit.class);
+        wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
+        wraithling.setPlayer(gameState.player1);
+        wraithling.setPositionByTile(tile);
+        tile.setUnit(wraithling);
+        
+        // Render summoning effect animation
+        BasicCommands.playEffectAnimation(out, utils.BasicObjectBuilders.loadEffect(utils.StaticConfFiles.f1_summon), tile);
+        try { Thread.sleep(150); } catch (Exception e) { e.printStackTrace(); } 
+        
+        // Render unit model on the board
+        BasicCommands.drawUnit(out, wraithling, tile);
+        try { Thread.sleep(150); } catch (Exception e) { e.printStackTrace(); } 
+        
+        // Initialize base stats for Wraithling (1/1)
+        wraithling.setAttack(1);
+        wraithling.setHealth(1);
+        wraithling.setMaxHealth(1);
+        BasicCommands.setUnitAttack(out, wraithling, 1);
+        try { Thread.sleep(100); } catch (Exception e) {}
+        BasicCommands.setUnitHealth(out, wraithling, 1);
+        try { Thread.sleep(100); } catch (Exception e) {}
+        
+        // Newly summoned units suffer from summoning sickness
+        wraithling.setCanMove(false);
+        wraithling.setCanAttack(false);
+    }
+
     // Story Card 17 Opening Gambit Logic
     private void triggerOpeningGambit(ActorRef out, GameState gameState, Unit summonedUnit, Card card) {
         String cardName = card.getCardname();
@@ -522,9 +592,9 @@ public class TileClicked implements EventProcessor {
                     if (target.getPlayer() != summonedUnit.getPlayer() && target.getHealth() < target.getMaxHealth()) {
                         target.decreaseHealth(gameState, out, target.getHealth());
                         break; 
-                    }
+                    }                    
                 }
             }
-        }
+        }    
     }
 }

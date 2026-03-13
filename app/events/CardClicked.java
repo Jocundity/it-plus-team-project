@@ -106,6 +106,47 @@ public class CardClicked implements EventProcessor{
                gameState.highlightManager.highlightSpellTargets(gameState, out);
                BasicCommands.addPlayer1Notification(out, "Select enemy target", 2);
             }
+            // =====================================================================
+            // Spell Targeting Logic: Wraithling Swarm
+            // =====================================================================
+            else if (cardName.equals("Wraithling Swarm")) {
+                
+                // 1. Validate mana availability before proceeding with spell targeting
+                if (gameState.player1.getMana() < clickedCard.getManacost()) {
+                    BasicCommands.addPlayer1Notification(out, "Not enough mana!", 2);
+                    return;
+                }
+
+                // 2. Enable spell targeting mode and store the selected card index
+                gameState.isSpellTargeting = true;
+                gameState.handPositionClicked = handPosition;
+                
+                // 3. Clear any existing board highlights to prevent visual overlap
+                if (gameState.selectedTile != null) {
+                    gameState.highlightManager.clearHighlights(out);
+                    gameState.selectedTile = null;
+                }
+
+                // 4. Safely iterate through the grid to highlight empty tiles (Dynamic bounds to prevent crashes)
+                for (int x = 0; x < 15; x++) {
+                    for (int y = 0; y < 15; y++) {
+                        try {
+                            Tile t = gameState.board.getTile(x, y);
+                            // A valid summon target for Wraithling Swarm is any unoccupied tile
+                            if (t != null && !t.hasUnit()) {
+                                BasicCommands.drawTile(out, t, 1);
+                                Thread.sleep(2); // Tiny delay to prevent WebSocket flooding and UI freeze
+                            }
+                        } catch (Exception e) {
+                            // Silently ignore array out-of-bounds if the grid is smaller than 15x15
+                        }
+                    }
+                }
+                
+                // 5. Provide UI feedback to the user instructing them on the next action
+                BasicCommands.addPlayer1Notification(out, "Select empty tile to swarm!", 2);
+            }
+
            } else {
         	    // Only trigger summoning mode if it's NOT a spell
         	    gameState.isSpellTargeting = false;

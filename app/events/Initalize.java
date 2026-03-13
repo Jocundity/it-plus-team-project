@@ -91,16 +91,16 @@ public class Initalize implements EventProcessor {
             List<Card> player1Deck = OrderedCardLoader.getPlayer1Cards(1);
             List<Card> player2Deck = OrderedCardLoader.getPlayer2Cards(1);
             
-            /*  For testing purposes
-            Card darkTerminus = null;
-            for (Card c : player1Deck) { if (c.getCardname().equals("Dark Terminus")) darkTerminus = c; }
-            if (darkTerminus != null) { player1Deck.remove(darkTerminus); player1Deck.add(0, darkTerminus); }
-
-            Card beamShock = null;
-            for (Card c : player2Deck) { if (c.getCardname().equals("Beamshock")) beamShock = c; }
-            if (beamShock != null) { player1Deck.add(1, beamShock); }
-            */
-
+            //For testing purposes
+            Card swarmCard = null;
+            for (Card c : player1Deck) { 
+                if (c.getCardname().equals("Wraithling Swarm")) swarmCard = c; 
+            }
+            if (swarmCard != null) { 
+                player1Deck.remove(swarmCard); 
+                player1Deck.add(0, swarmCard);
+            }
+            
             gameState.player1.initDeck(player1Deck);
             gameState.player2.initDeck(player2Deck);
 
