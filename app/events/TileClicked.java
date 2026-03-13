@@ -219,6 +219,12 @@ public class TileClicked implements EventProcessor {
 
             if (enemy && adjacent && attacker.getCanAttack()) {
 
+                // (Story Card 24) If adjacent Provoke exists, only Provoke can be attacked
+                if (isBlockedByProvoke(attackerTile, clickedTile, gameState)) {
+                    BasicCommands.addPlayer1Notification(out, "This unit must attack a Provoke enemy first!", 2);
+                    return;
+                }
+
                 gameState.highlightManager.clearHighlights(out);
 
                 // Attack enemy and play attack animation
@@ -438,6 +444,39 @@ public class TileClicked implements EventProcessor {
         applyDamageAndHandleDeath(out, gameState, attackerTile, attacker, defender.getAttack());
     }
     */
+
+    // (Story Card 24) Check if attack is blocked by adjacent Provoke unit
+    private boolean isBlockedByProvoke(Tile attackerTile, Tile clickedTile, GameState gameState) {
+        int ax = attackerTile.getTilex();
+        int ay = attackerTile.getTiley();
+
+        int[][] directions = {
+            {0,1}, {0,-1}, {1,0}, {-1,0},
+            {1,1}, {1,-1}, {-1,1}, {-1,-1}
+        };
+
+        boolean hasAdjacentProvoke = false;
+
+        for (int[] dir : directions) {
+            Tile adjTile = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+
+            if (adjTile != null && adjTile.hasUnit()) {
+                Unit u = adjTile.getUnit();
+
+                if (u.getPlayer() != attackerTile.getUnit().getPlayer() && u.hasProvoke()) {
+                    hasAdjacentProvoke = true;
+
+                    // If clicked tile is one of the adjacent provoke units, attack is allowed
+                    if (adjTile == clickedTile) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // If provoke exists but clicked target is not provoke, block the attack
+        return hasAdjacentProvoke;
+    }
     
     // Map the card names to the monster model configuration files
     private String getUnitConfigFile(String cardName) {

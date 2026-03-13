@@ -94,6 +94,35 @@ public class HighlightManager {
 			int ax = unitTile.getTilex();
 			int ay = unitTile.getTiley();
 
+			// (Story Card 24) Check adjacent enemy provoke units first
+            ArrayList<Tile> provokeTargets = new ArrayList<Tile>();
+            int[][] adjacentDirections = {
+                {0,1}, {0,-1}, {1,0}, {-1,0},
+                {1,1}, {1,-1}, {-1,1}, {-1,-1}
+            };
+
+            for (int[] dir : adjacentDirections) {
+                Tile adjTile = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+
+                if (adjTile != null && adjTile.hasUnit()) {
+                    Unit u = adjTile.getUnit();
+
+                    if (u.getPlayer() != attacker.getPlayer() && u.hasProvoke()) {
+                        provokeTargets.add(adjTile);
+                    }
+                }
+            }
+
+            // If adjacent provoke units exist, only highlight those units
+            if (!provokeTargets.isEmpty()) {
+                for (Tile t : provokeTargets) {
+                    BasicCommands.drawTile(out, t, 2);
+                    try { Thread.sleep(80); } catch (Exception e) {}
+                    targetTiles.add(t);
+                }
+                return;
+            }
+
 			for (int x = 1; x <= 9; x++) {
 				for (int y = 1; y <= 5; y++) {
 					Tile targetTile = gameState.board.getTile(x, y);

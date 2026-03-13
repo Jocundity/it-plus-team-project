@@ -269,4 +269,25 @@ public class Unit {
 	public void setIsStunned(boolean val) {
         this.isStunned = val;
     }
+
+	// Getter and setter for configFile
+    public String getConfigFile() {
+        return configFile;
+    }
+
+    public void setConfigFile(String configFile) {
+        this.configFile = configFile;
+    }
+
+    // (Story Card 24) Check if this unit has Provoke ability
+    public boolean hasProvoke() {
+        if (configFile == null) return false;
+
+        String config = configFile.toLowerCase();
+
+        return config.contains("swamp_entangler")
+            || config.contains("rock_pulveriser")
+            || config.contains("silverguard_knight")
+            || config.contains("ironcliff_guardian");
+    }
 }
