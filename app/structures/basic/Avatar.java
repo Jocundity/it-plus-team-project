@@ -12,7 +12,18 @@ public class Avatar extends Unit {
 		this.player = player;
 		
 	}
+	private void triggerAvatarDamagedBeforeHealthLoss(GameState gameState, ActorRef out, int amount) {
+		// Story Card 19 hook:
+    	// trigger any on-avatar-damaged effects here BEFORE avatar health changes
 
+    	// Current codebase does not yet contain a complete AvatarDamaged event system,
+    	// so this hook is intentionally left as the single integration point.
+
+    	// Future integrations:
+    	// - Zeal / Silverguard Knight reactions
+    	// - Artifact durability / robustness reduction
+    	// - Horn of the Forsaken related logic
+	}
 	public Avatar(int id, UnitAnimationSet animations, ImageCorrection correction) {
 		super(id, animations, correction);
 		// TODO Auto-generated constructor stub
@@ -29,60 +40,6 @@ public class Avatar extends Unit {
 		// TODO Auto-generated constructor stub
 	}
 	
-	@Override
-	// Method to decrease health without going below zero
-	// Make sure life total is updated
-			public void decreaseHealth(GameState gameState, ActorRef out, int amount) {
-				if (health - amount <= 0) {
-					this.health = 0;
-					this.showHealth(out);
-					this.player.setHealth(health);
-					
-					// Play hit and death animations and delete unit from board
-					BasicCommands.playUnitAnimation(out, this, UnitAnimationType.hit);
-					try { Thread.sleep(2000); } catch (Exception e) {}
-					BasicCommands.playUnitAnimation(out, this, UnitAnimationType.death);
-					try { Thread.sleep(2000); } catch (Exception e) {}
-					
-					Tile deathTile = this.tile;
-					BasicCommands.deleteUnit(out, this);
-					try { Thread.sleep(1000); } catch (Exception e) {}
-					
-					if (deathTile != null) {
-						deathTile.setUnit(null);
-						BasicCommands.drawTile(out, deathTile, 0);
-						
-					}
-					
-					// Display Game Over Message
-					if (!(this.player instanceof AIPlayer)) {
-	                    BasicCommands.addPlayer1Notification(out, "Game Over - You Lose!", 5);
-	                } else {
-	                    BasicCommands.addPlayer1Notification(out, "Victory - You Win!", 5);
-	                }
-
-	                gameState.gameOver = true;
-					
-				} else {
-					health = health - amount;
-					this.showHealth(out);
-					this.player.setHealth(health);
-					
-					// Play hit animation followed by idle animation
-					BasicCommands.playUnitAnimation(out, this, UnitAnimationType.hit);
-					try { Thread.sleep(2000); } catch (Exception e) {}
-					BasicCommands.playUnitAnimation(out, this, UnitAnimationType.idle);
-				}
-				
-				// Update life totals
-				if (!(this.player instanceof AIPlayer)) {
-					BasicCommands.setPlayer1Health(out, this.player);
-					try { Thread.sleep(2000); } catch (Exception e) {}
-				} else {
-					BasicCommands.setPlayer2Health(out, this.player);
-					try { Thread.sleep(2000); } catch (Exception e) {}
-				}
-			}
 	
 	@Override
 	// Method to increase health without going above max health
@@ -106,6 +63,64 @@ public class Avatar extends Unit {
 			try { Thread.sleep(2000); } catch (Exception e) {}
 		}
 		
+	}
+	@Override
+	public void decreaseHealth(GameState gameState, ActorRef out, int amount) {
+
+    	// Card 19:
+    	// Trigger avatar-damaged effects BEFORE avatar health is altered
+		if (amount <= 0) return;
+    	triggerAvatarDamagedBeforeHealthLoss(gameState, out, amount);
+
+    	int newHealth = health - amount;
+
+    	if (newHealth <= 0) {
+        	this.health = 0;
+        	this.showHealth(out);
+        	this.player.setHealth(this.health);
+
+        	// Play hit and death animations
+        	BasicCommands.playUnitAnimation(out, this, UnitAnimationType.hit);
+        	try { Thread.sleep(2000); } catch (Exception e) {}
+
+        	BasicCommands.playUnitAnimation(out, this, UnitAnimationType.death);
+        	try { Thread.sleep(2000); } catch (Exception e) {}
+
+        	Tile deathTile = this.tile;
+        	BasicCommands.deleteUnit(out, this);
+        	try { Thread.sleep(1000); } catch (Exception e) {}
+
+        	if (deathTile != null) {
+            	deathTile.setUnit(null);
+            	BasicCommands.drawTile(out, deathTile, 0);
+        	}
+
+        	if (!(this.player instanceof AIPlayer)) {
+            	BasicCommands.addPlayer1Notification(out, "Game Over - You Lose!", 5);
+        	} else {
+            	BasicCommands.addPlayer1Notification(out, "Victory - You Win!", 5);
+        	}
+
+        	gameState.gameOver = true;
+
+    	} else {
+        	this.health = newHealth;
+        	this.showHealth(out);
+        	this.player.setHealth(this.health);
+
+        	BasicCommands.playUnitAnimation(out, this, UnitAnimationType.hit);
+        	try { Thread.sleep(2000); } catch (Exception e) {}
+
+        	BasicCommands.playUnitAnimation(out, this, UnitAnimationType.idle);
+    	}
+
+    	if (!(this.player instanceof AIPlayer)) {
+        	BasicCommands.setPlayer1Health(out, this.player);
+        	try { Thread.sleep(2000); } catch (Exception e) {}
+    	} else {
+        	BasicCommands.setPlayer2Health(out, this.player);
+        	try { Thread.sleep(2000); } catch (Exception e) {}
+    	}
 	}
 
 }
