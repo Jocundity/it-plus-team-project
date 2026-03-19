@@ -48,7 +48,7 @@ public class StaticConfFiles {
 				case "Silverguard Squire": return "conf/gameconfs/units/silverguard_squire.json";
 				case "Ironcliff Guardian": return "conf/gameconfs/units/ironcliff_guardian.json";
 
-				default: return StaticConfFiles.wraithling;
+				default: return null;
 			}
 		}
 	

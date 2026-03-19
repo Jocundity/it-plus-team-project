@@ -69,8 +69,17 @@ public class Initalize implements EventProcessor {
 
         BasicCommands.drawTile(out, tile1, 0);
         try { Thread.sleep(200); } catch (Exception e) {}
+
         player1Avatar.drawUnit(out, tile1);
-        
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitAttack(out, player1Avatar, player1Avatar.getAttack());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitHealth(out, player1Avatar, player1Avatar.getHealth());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        gameState.player1.showLife(out);
 
         Avatar player2Avatar = new Avatar(gameState.player2, 2);
         Tile tile2 = gameState.board.getTile(8, 3);    
@@ -84,7 +93,17 @@ public class Initalize implements EventProcessor {
         
         BasicCommands.drawTile(out, tile2, 0);
         try { Thread.sleep(200); } catch (Exception e) {}
+
         player2Avatar.drawUnit(out, tile2);
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitAttack(out, player2Avatar, player2Avatar.getAttack());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitHealth(out, player2Avatar, player2Avatar.getHealth());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        gameState.player2.showLife(out);
 
         try {
             // Initialise both decks

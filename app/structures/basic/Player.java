@@ -21,6 +21,8 @@ public class Player {
     private int mana;
     private int turnNumber;
     private String avatarConfigFile;
+    private boolean hornEquipped = false;
+    private int hornDurability = 0;
 
     // deck and hand management
     private Deck deck;
@@ -50,12 +52,27 @@ public class Player {
     public void setHealth(int health) { this.health = health; }
     
     // Getters and setters for max health
-    public int getMaxHealth() { return health; }
-    public void setMaxHealth(int health) { this.health = health; }
+    public int getMaxHealth() { return maxHealth; }
+    public void setMaxHealth(int maxHealth) { this.maxHealth = maxHealth; }
 
     public int getMana() { return mana; }
     public void setMana(int mana) { this.mana = mana; }
 
+    public boolean isHornEquipped() {
+        return hornEquipped;
+    }
+
+    public void setHornEquipped(boolean hornEquipped) {
+        this.hornEquipped = hornEquipped;
+    }
+
+    public int getHornDurability() {
+        return hornDurability;
+    }
+
+    public void setHornDurability(int hornDurability) {
+        this.hornDurability = hornDurability;
+    }
     public int getTurnNumber() { return turnNumber; }
 
     public String getAvatarConfigFile() { return StaticConfFiles.humanAvatar; }
