@@ -20,6 +20,7 @@ public class EndTurnClicked implements EventProcessor {
 
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
+		if (gameState.gameOver) return;
 
         if (gameState.player1 == null || gameState.player2 == null) {
             // Safety guard: if initialise hasn't run yet, do nothing.
@@ -60,6 +61,8 @@ public class EndTurnClicked implements EventProcessor {
             
             gameState.player1.showMana(out);
             gameState.player2.showMana(out);
+
+			if (gameState.gameOver) return;
             
             handleAITurn(out, gameState);
             
@@ -72,32 +75,50 @@ public class EndTurnClicked implements EventProcessor {
         private void handleAITurn(final ActorRef out, final GameState gameState) {
         	new Thread(() -> {
         		try {
+					if (gameState.gameOver) return;
+
         			BasicCommands.addPlayer1Notification(out, "Player 2's turn", 2);
         			Thread.sleep(2000);
+
+					if (gameState.gameOver) return;
         			
         			// Let AI choose and play card 
         			// ** only 1 card per turn for now **
         			Card aiCard = gameState.player2.chooseCard(gameState);
-        			BasicCommands.addPlayer1Notification(out, "Player 2 chose " + aiCard.getCardname(), 2);
-        			Thread.sleep(2000);
-        			gameState.player2.playCard(aiCard, gameState, out, gameState.highlightManager);
-        			Thread.sleep(2000);
+
+                    if (gameState.gameOver) return;
+
+                    if (aiCard != null) {
+                        BasicCommands.addPlayer1Notification(out, "Player 2 chose " + aiCard.getCardname(), 2);
+                        Thread.sleep(2000);
+
+                        if (gameState.gameOver) return;
+
+                        gameState.player2.playCard(aiCard, gameState, out, gameState.highlightManager);
+                        Thread.sleep(2000);
+                    }
         			
-        			
+        			if (gameState.gameOver) return;
             		
             		// End turn actions
         			Thread.sleep(2000);
+
+					if (gameState.gameOver) return;
+
             		gameState.player2.drainMana(out);
             		gameState.player2.drawCard(out);
             		
             		// Switch back to Player 1
             		Thread.sleep(2000);
+
+					if (gameState.gameOver) return;
+					
             		gameState.isPlayer1Turn = true;
             		gameState.player1.startTurn(out);
             		
             		// Ensure that Player 1's units can move and attack
-            		for (int x = 0; x < 9; x++) {
-            			for (int y = 0; y < 5; y++) {
+            		for (int x = 1; x <= 9; x++) {
+                        for (int y = 1; y <= 5; y++) {
             				Tile tile = gameState.board.getTile(x, y);
             				if (tile != null && tile.hasUnit()) {
             					Unit u = tile.getUnit();
@@ -108,6 +129,8 @@ public class EndTurnClicked implements EventProcessor {
             				}
             			}
             		}
+
+					if (gameState.gameOver) return;
             	
             	// Show mana amounts on screen
             	gameState.player1.showMana(out);

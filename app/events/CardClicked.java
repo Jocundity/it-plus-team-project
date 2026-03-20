@@ -25,6 +25,9 @@ public class CardClicked implements EventProcessor{
 
 	@Override
 	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
+
+        // Stop all hand-card interaction after the game is over
+        if (gameState.gameOver) return;
 		
 		// If it is not currently Player 1's turn, directly ignore all click operations on the hand cards.
 		if (!gameState.isPlayer1Turn) {
