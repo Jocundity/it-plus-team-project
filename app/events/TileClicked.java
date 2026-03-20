@@ -297,7 +297,7 @@ public class TileClicked implements EventProcessor {
                     landingTile.setUnit(attacker);
                     attackerTile.setUnit(null);
                     attacker.setPositionByTile(landingTile);
-                    try { Thread.sleep(1500); } catch (Exception e) {}
+                    try { Thread.sleep(2000); } catch (Exception e) {}
 
                     // Attack
                     BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
