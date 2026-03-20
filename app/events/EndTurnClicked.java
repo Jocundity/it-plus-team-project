@@ -60,6 +60,24 @@ public class EndTurnClicked implements EventProcessor {
             gameState.isPlayer1Turn = false;
             gameState.player2.startTurn(out);
             
+         // Reset movement and attack states for Player 2's units
+            for (int x = 0; x < 10; x++) {
+                for (int y = 0; y < 6; y++) {
+                    try {
+                        Tile tile = gameState.board.getTile(x, y);
+                        if (tile != null && tile.hasUnit()) {
+                            Unit u = tile.getUnit();
+                            if (u.getPlayer() == gameState.player2) {
+                                u.setCanMove(true);
+                                u.setCanAttack(true);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Safely ignore out-of-bounds coordinates
+                    } 
+                }
+            }
+            
             gameState.player1.showMana(out);
             gameState.player2.showMana(out);
             
@@ -71,73 +89,88 @@ public class EndTurnClicked implements EventProcessor {
             }
     }
         
-        private void handleAITurn(final ActorRef out, final GameState gameState) {
-    		new Thread(() -> {
-        		try {
-            		if (gameState.gameOver) return;
+    private void handleAITurn(final ActorRef out, final GameState gameState) {
+        new Thread(() -> {
+            try {
+                if (gameState.gameOver) return;
 
-            		BasicCommands.addPlayer1Notification(out, "Player 2's turn", 2);
-            		Thread.sleep(2000);
+                BasicCommands.addPlayer1Notification(out, "Player 2's turn", 2);
+                Thread.sleep(2000);
 
-            		if (gameState.gameOver) return;
+                if (gameState.gameOver) return;
 
-            		Card aiCard = gameState.player2.chooseCard(gameState);
-            		if (aiCard == null) {
-                		gameState.player2.drainMana(out);
+                Card aiCard = gameState.player2.chooseCard(gameState);
+                
+                if (aiCard == null) {
+                    // Execute AI board actions even if no card is played
+                    gameState.player2.processAIBoardActions(gameState, out);
+                    Thread.sleep(1500); // Allow time for action animations
+                    
+                    gameState.player2.drainMana(out);
+                    if (gameState.gameOver) return;
 
-                		if (gameState.gameOver) return;
+                    gameState.isPlayer1Turn = true;
+                    gameState.player1.startTurn(out);
+                    gameState.player1.showMana(out);
+                    gameState.player2.showMana(out);
+                    BasicCommands.addPlayer1Notification(out, "Player 1's turn", 2);
+                    return;
+                }
 
-                		gameState.isPlayer1Turn = true;
-                		gameState.player1.startTurn(out);
-                		gameState.player1.showMana(out);
-                		gameState.player2.showMana(out);
-                		BasicCommands.addPlayer1Notification(out, "Player 1's turn", 2);
-                		return;
-            		}
+                if (gameState.gameOver) return;
 
-            		if (gameState.gameOver) return;
+                BasicCommands.addPlayer1Notification(out, "Player 2 chose " + aiCard.getCardname(), 2);
+                Thread.sleep(2000);
 
-            		BasicCommands.addPlayer1Notification(out, "Player 2 chose " + aiCard.getCardname(), 2);
-            		Thread.sleep(2000);
+                if (gameState.gameOver) return;
 
-            		if (gameState.gameOver) return;
+                // Play the selected card
+                gameState.player2.playCard(aiCard, gameState, out, gameState.highlightManager);
+                Thread.sleep(2000);
 
-            		gameState.player2.playCard(aiCard, gameState, out, gameState.highlightManager);
-            		Thread.sleep(2000);
+                if (gameState.gameOver) return;
 
-            		if (gameState.gameOver) return;
+                // Execute AI board actions (triggers Rush for specific units)
+                gameState.player2.processAIBoardActions(gameState, out);
+                Thread.sleep(1500); // Allow time for action animations
 
-           			gameState.player2.drainMana(out);
-            		gameState.player2.drawCard(out);
+                gameState.player2.drainMana(out);
+                gameState.player2.drawCard(out);
 
-            		if (gameState.gameOver) return;
+                if (gameState.gameOver) return;
 
-            		gameState.isPlayer1Turn = true;
-            		gameState.player1.startTurn(out);
+                // Transition turn back to Player 1
+                gameState.isPlayer1Turn = true;
+                gameState.player1.startTurn(out);
 
-            		for (int x = 0; x <= 9; x++) {
-                		for (int y = 0; y <= 5; y++) {
-                    		Tile tile = gameState.board.getTile(x, y);
-                    		if (tile != null && tile.hasUnit()) {
-                        		Unit u = tile.getUnit();
-                        		if (u.getPlayer() == gameState.player1) {
-                            		u.setCanMove(true);
-                            		u.setCanAttack(true);
-                        		}
-                    		}
-                		}
-            		}
+                 // Reset movement and attack states for Player 1's units
+                for (int x = 0; x < 10; x++) {
+                    for (int y = 0; y < 6; y++) {
+                        try {
+                            Tile tile = gameState.board.getTile(x, y);
+                            if (tile != null && tile.hasUnit()) {
+                                Unit u = tile.getUnit();
+                                if (u.getPlayer() == gameState.player1) {
+                                    u.setCanMove(true);
+                                    u.setCanAttack(true);
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Safely ignore out-of-bounds coordinates
+                        }
+                    }
+                }
 
-            		gameState.player1.showMana(out);
-            		gameState.player2.showMana(out);
+                gameState.player1.showMana(out);
+                gameState.player2.showMana(out);
 
-            		if (!gameState.gameOver) {
-                		BasicCommands.addPlayer1Notification(out, "Player 1's turn", 2);
-            		}
+                if (!gameState.gameOver) {
+                    BasicCommands.addPlayer1Notification(out, "Player 1's turn", 2);
+                }
 
-        		} catch (Exception e) {
-            		e.printStackTrace();
-        		}
-    		}).start();
-		}
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
 }

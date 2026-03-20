@@ -16,6 +16,9 @@ import utils.StaticConfFiles;
 
 public class TileClicked implements EventProcessor {
 
+	// Global unit ID generator exclusively for human players, starting value set to 2000
+    private static int playerUnitIdCounter = 2000;
+    
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
 
@@ -74,19 +77,20 @@ public class TileClicked implements EventProcessor {
                 // Determine who the new unit belongs to based on whose turn it is currently.
                 Player currentPlayer = gameState.isPlayer1Turn ? gameState.player1 : gameState.player2;
 
-                // Create a monster unit and set it to belong to the current player
-                int unitID = Math.abs(
-                        (cardToSummon.getCardname().hashCode() * 31)
-                        + (clickedTile.getTilex() * 100)
-                        + clickedTile.getTiley()
-                );
+                // Use absolutely unique counter ID for unit
+                int unitID = playerUnitIdCounter++; 
                 Unit newUnit = utils.BasicObjectBuilders.loadUnit(confFile, unitID, Unit.class);
                 newUnit.setConfigFile(confFile);
                 newUnit.setPlayer(currentPlayer);
-
-                // Place unit on target tile and render to game view
                 newUnit.setPositionByTile(clickedTile);
+
+                // Set actual stats before rendering unit model
+                newUnit.setAttack(cardToSummon.getBigCard().getAttack());
+                newUnit.setHealth(cardToSummon.getBigCard().getHealth());
+                newUnit.setMaxHealth(cardToSummon.getBigCard().getHealth());
+                
                 clickedTile.setUnit(newUnit);
+                
                 BasicCommands.drawUnit(out, newUnit, clickedTile);
                 try {
                     Thread.sleep(100);
@@ -104,8 +108,16 @@ public class TileClicked implements EventProcessor {
                 triggerOpeningGambit(out, gameState, newUnit, cardToSummon);
 
                 // Newly summoned units are "exhausted" (can't move/attack) for the current turn
-                newUnit.setCanMove(false);
-                newUnit.setCanAttack(false);
+                // Story Card #23: Rush
+                // Saberspine Tiger can move and attack immediately
+                if (cardToSummon.getCardname().equals("Saberspine Tiger")) {
+                    newUnit.setCanMove(true);
+                    newUnit.setCanAttack(true);
+                } else {
+                    // Default: Summoning Sickness
+                    newUnit.setCanMove(false);
+                    newUnit.setCanAttack(false);
+                }
                 // Remove consumed card from player's hand
                 gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
 
@@ -197,9 +209,14 @@ public class TileClicked implements EventProcessor {
                     BasicCommands.deleteUnit(out, targetUnit);
                     BasicCommands.addPlayer1Notification(out, "Unit Destroyed!", 2);
 
-                    // Add a new Wraithling unit to the board at the clicked tile
-                    // 999 is just a temporary ID
-                    structures.basic.Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, 999, structures.basic.Unit.class);
+                    // Use absolutely unique counter ID
+                    structures.basic.Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, playerUnitIdCounter++, structures.basic.Unit.class);
+                    
+                    // Critical fix: Assign stats in advance
+                    wraithling.setAttack(1);
+                    wraithling.setHealth(1);
+                    wraithling.setMaxHealth(1);
+                    
                     wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
                     wraithling.setPlayer(gameState.player1);
                     wraithling.setPositionByTile(clickedTile);
@@ -538,8 +555,8 @@ public class TileClicked implements EventProcessor {
 
     // Story Card 30 Wraithling Swarm Summoning Logic
     private void summonWraithlingAt(ActorRef out, GameState gameState, Tile tile) {
-        // Generate a unique ID using hashcode and coordinates to prevent front-end rendering conflicts
-        int uniqueId = 6000 + (tile.getTilex() * 100) + tile.getTiley();
+    	// Use absolutely unique counter ID (replace coordinate hash algorithm) to completely eliminate unit collision
+        int uniqueId = playerUnitIdCounter++;
 
         Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, uniqueId, Unit.class);
         wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
@@ -643,7 +660,8 @@ public class TileClicked implements EventProcessor {
             int targetX = x - 1;
             Tile behindTile = gameState.board.getTile(targetX, y);
             if (behindTile != null && !behindTile.hasUnit()) {
-                Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, summonedUnit.getId() + 100, Unit.class);
+            	// Use absolutely unique counter ID
+                Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, playerUnitIdCounter++, Unit.class);
                 wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
                 wraithling.setPlayer(gameState.player1);
 
