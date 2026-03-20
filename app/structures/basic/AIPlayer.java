@@ -16,6 +16,9 @@ import utils.StaticConfFiles;
 public class AIPlayer extends Player {
 	String avatarConfigFile;
 
+	// AI-exclusive global unit ID generator, with the starting value set to 5000 to avoid conflicts with human players
+    private static int aiUnitIdCounter = 5000;
+    
 	public AIPlayer() {
 		super();// TODO Auto-generated constructor stub
 	}
@@ -164,46 +167,51 @@ public class AIPlayer extends Player {
                     }
                 }
 
-                // Execute summon
                 if (targetTile != null) {
-                    int unitID = Math.abs(
-                            (cardName.hashCode() * 31)
-                            + (targetTile.getTilex() * 100)
-                            + targetTile.getTiley()
-                    );
+                	// Use absolutely unique counter ID for unit
+                    int unitID = aiUnitIdCounter++; 
                     String confFile = utils.StaticConfFiles.getUnitConf(cardName);
                     
                     if (confFile != null) {
                         Unit newUnit = BasicObjectBuilders.loadUnit(confFile, unitID, Unit.class);
-                        
                         newUnit.setConfigFile(confFile);
                         newUnit.setPlayer(gameState.player2); 
                         newUnit.setPositionByTile(targetTile);
-                        targetTile.setUnit(newUnit);
-
-                        BasicCommands.playEffectAnimation(out, BasicObjectBuilders.loadEffect(StaticConfFiles.f1_summon), targetTile);
-                        try { Thread.sleep(500); } catch (InterruptedException e) {}
                         
-                        BasicCommands.drawUnit(out, newUnit, targetTile);
-                        try { Thread.sleep(100); } catch (InterruptedException e) {} 
-
+                        // Set correct stats to backend object before tile assignment/rendering
                         newUnit.setAttack(card.getBigCard().getAttack());
                         newUnit.setHealth(card.getBigCard().getHealth());
                         newUnit.setMaxHealth(card.getBigCard().getHealth());
+                        
+                        targetTile.setUnit(newUnit);
+
+                        BasicCommands.playEffectAnimation(out, BasicObjectBuilders.loadEffect(StaticConfFiles.f1_summon), targetTile);
+                        try { Thread.sleep(500); } catch (Exception e) {}
+                        
+                        // Ensure correct stats are passed even if frontend throttles
+                        BasicCommands.drawUnit(out, newUnit, targetTile);
+                        try { Thread.sleep(100); } catch (Exception e) {} 
 
                         BasicCommands.setUnitAttack(out, newUnit, newUnit.getAttack());
-                        try { Thread.sleep(100); } catch (InterruptedException e) {} 
+                        try { Thread.sleep(100); } catch (Exception e) {} 
 
                         BasicCommands.setUnitHealth(out, newUnit, newUnit.getHealth());
                         
-                        // Trigger AI Opening Gambit
                         triggerAIOpeningGambit(out, gameState, newUnit, card);
                         
-                        newUnit.setCanMove(false);
-                        newUnit.setCanAttack(false);
+                     // Story Card #23: Rush
+                     // Saberspine Tiger can move and attack immediately
+                     if (cardName.equals("Saberspine Tiger")) {
+                         newUnit.setCanMove(true);
+                         newUnit.setCanAttack(true);
+                     } else {
+                         // Default: Summoning Sickness
+                         newUnit.setCanMove(false);
+                         newUnit.setCanAttack(false);
+                     };
                     }
+                }
             }
-        }
         
     	
     	// Reduce mana upon successful play
@@ -228,7 +236,8 @@ public class AIPlayer extends Player {
             for (int y = 1; y <= 5 && summonedCount < 3; y++) {
                 Tile t = gameState.board.getTile(x, y);
                 if (t != null && !t.hasUnit()) {
-                    int uniqueId = 7000 + (x * 100) + y + summonedCount;
+                	//Use an absolutely unique counter ID
+                	int uniqueId = aiUnitIdCounter++;
 
                     Unit wraithling = BasicObjectBuilders.loadUnit(StaticConfFiles.wraithling, uniqueId, Unit.class);
                     wraithling.setConfigFile(StaticConfFiles.wraithling);
@@ -331,6 +340,132 @@ public class AIPlayer extends Player {
     	return false;
     }
     
+    // Story Card: AI Board Actions (Movement & Attacking)
+    public void processAIBoardActions(GameState gameState, ActorRef out) {
+        Unit humanAvatar = findHumanAvatar(gameState);
+        if (humanAvatar == null) return;
+        Tile targetTile = getTileByUnit(gameState, humanAvatar);
+
+        // Scan the board safely from index 0
+        for (int x = 0; x < 10; x++) {
+            for (int y = 0; y < 6; y++) {
+                try {
+                    Tile tile = gameState.board.getTile(x, y);
+                    if (tile != null && tile.hasUnit() && tile.getUnit().getPlayer() == gameState.player2) {
+                        Unit aiUnit = tile.getUnit();
+                        
+                        // 1. Try attacking an adjacent enemy first
+                        if (aiUnit.getCanAttack()) {
+                            boolean attacked = tryAttackAdjacentEnemy(out, gameState, tile, aiUnit);
+                            if (attacked) continue;
+                        }
+
+                        // 2. If no adjacent enemy, move towards the target and then attack
+                        if (aiUnit.getCanMove()) {
+                            Tile bestMoveTile = findBestMoveTowardsTarget(gameState, tile, targetTile);
+                            
+                            if (bestMoveTile != null && bestMoveTile != tile) {
+                                BasicCommands.moveUnitToTile(out, aiUnit, bestMoveTile);
+                                bestMoveTile.setUnit(aiUnit);
+                                tile.setUnit(null);
+                                aiUnit.setPositionByTile(bestMoveTile);
+                                aiUnit.setCanMove(false); 
+                                
+                                try { Thread.sleep(1500); } catch (Exception e) {} 
+                                
+                                if (aiUnit.getCanAttack()) {
+                                    tryAttackAdjacentEnemy(out, gameState, bestMoveTile, aiUnit);
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // Safely ignore out-of-bounds tiles
+                } 
+            }
+        }
+    }
+
+    private boolean tryAttackAdjacentEnemy(ActorRef out, GameState gameState, Tile attackerTile, Unit attacker) {
+        int ax = attackerTile.getTilex();
+        int ay = attackerTile.getTiley();
+        int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+        
+        for (int[] dir : directions) {
+            Tile adjTile = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+            if (adjTile != null && adjTile.hasUnit()) {
+                Unit target = adjTile.getUnit();
+                
+                if (target.getPlayer() != attacker.getPlayer()) {
+                    BasicCommands.playUnitAnimation(out, attacker, structures.basic.UnitAnimationType.attack);
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+                    
+                    target.decreaseHealth(gameState, out, attacker.getAttack());
+                    attacker.setCanAttack(false);
+                    attacker.setCanMove(false); 
+                    
+                    // Story Card #12: Counterattack
+                    if (target.getHealth() > 0) {
+                        BasicCommands.playUnitAnimation(out, target, structures.basic.UnitAnimationType.attack);
+                        try { Thread.sleep(1000); } catch (Exception e) {}
+                        attacker.decreaseHealth(gameState, out, target.getAttack());
+                        BasicCommands.playUnitAnimation(out, target, structures.basic.UnitAnimationType.idle);
+                    }
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Tile findBestMoveTowardsTarget(GameState gameState, Tile startTile, Tile targetTile) {
+        Tile bestTile = startTile;
+        double minDistance = calculateDistance(startTile, targetTile);
+
+        // Standard movement range of 2 tiles
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dy = -2; dy <= 2; dy++) {
+                int cx = startTile.getTilex() + dx;
+                int cy = startTile.getTiley() + dy;
+                Tile candidate = gameState.board.getTile(cx, cy);
+                
+                if (candidate != null && !candidate.hasUnit()) {
+                    double dist = calculateDistance(candidate, targetTile);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        bestTile = candidate;
+                    }
+                }
+            }
+        }
+        return bestTile;
+    }
+
+    private double calculateDistance(Tile t1, Tile t2) {
+        return Math.sqrt(Math.pow(t1.getTilex() - t2.getTilex(), 2) + Math.pow(t1.getTiley() - t2.getTiley(), 2));
+    }
+
+    private Unit findHumanAvatar(GameState gameState) {
+        for (int x = 0; x < 10; x++) {
+            for (int y = 0; y < 6; y++) {
+                try {
+                    Tile tile = gameState.board.getTile(x, y);
+                    if (tile != null && tile.hasUnit()) {
+                        Unit unit = tile.getUnit();
+                        if (unit instanceof Avatar && unit.getPlayer() == gameState.player1) {
+                            return unit;
+                        }
+                    }
+                } catch (Exception e) {
+                    // Safely ignore out-of-bounds tiles
+                } 
+            }
+        }
+        return null;
+    }
     
+    private Tile getTileByUnit(GameState gameState, Unit unit) {
+        return gameState.board.getTile(unit.getPosition().getTilex(), unit.getPosition().getTiley());
+    }
     
 }
