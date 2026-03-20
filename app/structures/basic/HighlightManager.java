@@ -16,11 +16,40 @@ public class HighlightManager {
 	public HighlightManager() {
 		// TODO Auto-generated constructor stub
 	}
+
+	// (Story Card 22) Check whether the moving unit is adjacent to any enemy unit with Provoke
+    private boolean hasAdjacentEnemyProvoke(int startX, int startY, GameState gs) {
+        Tile startTile = gs.board.getTile(startX, startY);
+        if (startTile == null || !startTile.hasUnit()) return false;
+
+        Unit movingUnit = startTile.getUnit();
+
+        int[][] directions = {
+            {0,1}, {0,-1}, {1,0}, {-1,0},
+            {1,1}, {1,-1}, {-1,1}, {-1,-1}
+        };
+
+        for (int[] dir : directions) {
+            Tile adjTile = gs.board.getTile(startX + dir[0], startY + dir[1]);
+            if (adjTile != null && adjTile.hasUnit()) {
+                Unit adjUnit = adjTile.getUnit();
+                if (adjUnit.getPlayer() != movingUnit.getPlayer() && adjUnit.hasProvoke()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 	
 	// Core movement validation rule
 	public boolean isValidMove(int startX, int startY, int targetX, int targetY,  Tile target, GameState gs) {
 		// Check for out of bounds movement
 		if (target == null) return false;
+
+		if (hasAdjacentEnemyProvoke(startX, startY, gs)) {
+            return false;
+        }
 		
 		// Calculate horizontal and vertical distances
 		int dx = Math.abs(startX - targetX);
