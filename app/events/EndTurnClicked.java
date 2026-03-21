@@ -68,8 +68,15 @@ public class EndTurnClicked implements EventProcessor {
                         if (tile != null && tile.hasUnit()) {
                             Unit u = tile.getUnit();
                             if (u.getPlayer() == gameState.player2) {
-                                u.setCanMove(true);
-                                u.setCanAttack(true);
+                                // [Bug Fix] If the unit is stunned, it should lose its movement and attack capabilities for this turn, then have the stun status removed at the end of the turn. Otherwise, it should function normally.
+                                if (u.isStunned()) {
+                                    u.setCanMove(false);
+                                    u.setCanAttack(false);
+                                    u.setIsStunned(false); 
+                                } else {
+                                    u.setCanMove(true);
+                                    u.setCanAttack(true);
+                                }
                             }
                         }
                     } catch (Exception e) {
@@ -151,8 +158,15 @@ public class EndTurnClicked implements EventProcessor {
                             if (tile != null && tile.hasUnit()) {
                                 Unit u = tile.getUnit();
                                 if (u.getPlayer() == gameState.player1) {
-                                    u.setCanMove(true);
-                                    u.setCanAttack(true);
+                                    // [Bug Fix] If the unit is stunned, it should lose its movement and attack capabilities for this turn, then have the stun status removed at the end of the turn. Otherwise, it should function normally.
+                                    if (u.isStunned()) {
+                                        u.setCanMove(false);
+                                        u.setCanAttack(false);
+                                        u.setIsStunned(false); 
+                                    } else {
+                                        u.setCanMove(true);
+                                        u.setCanAttack(true);
+                                    }
                                 }
                             }
                         } catch (Exception e) {
