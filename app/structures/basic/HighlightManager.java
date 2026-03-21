@@ -229,4 +229,35 @@ public class HighlightManager {
                     }
                 }
             }
+            // (Story card 30) Highlight empty tiles for Wraithling Swarm
+            public void highlightEmptyTiles(GameState gameState, ActorRef out) {
+                clearHighlights(out);
+                for (int x = 0; x <= 9; x++) {
+                    for (int y = 0; y <= 5; y++) {
+                        Tile t = gameState.board.getTile(x, y);
+                        if (t != null && !t.hasUnit()) {
+                            BasicCommands.drawTile(out, t, 1); // 1 = white highlight
+                            targetTiles.add(t); // Tell the manager to track this tile
+                            try { Thread.sleep(10); } catch (Exception e) {}
+                        }
+                    }
+                }
+            }
+            // (Story card) Highlight friendly Avatar for equipping artifacts
+            public void highlightFriendlyAvatar(GameState gameState, ActorRef out) {
+                clearHighlights(out);
+                for (int x = 0; x <= 9; x++) {
+                    for (int y = 0; y <= 5; y++) {
+                        Tile t = gameState.board.getTile(x, y);
+                        // Highlight Player 1's Avatar
+                        if (t != null && t.hasUnit() && t.getUnit() instanceof Avatar && t.getUnit().getPlayer() == gameState.player1) {
+                            BasicCommands.drawTile(out, t, 1); // 1 = white highlight
+                            targetTiles.add(t);
+                            try { Thread.sleep(10); } catch (Exception e) {}
+                        }
+                    }
+                }
+            }
 		}
+
+

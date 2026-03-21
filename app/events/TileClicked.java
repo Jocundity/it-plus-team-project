@@ -159,23 +159,54 @@ public class TileClicked implements EventProcessor {
                     return;
                 }
 
+                // 1. Summon the first Wraithling at the clicked tile
                 summonWraithlingAt(out, gameState, clickedTile);
-
-                // Scan the board to summon up to 2 additional Wraithlings on available empty tiles
                 int summonedCount = 1;
-                for (int x = 0; x < 15 && summonedCount < 3; x++) {
-                    for (int y = 0; y < 15 && summonedCount < 3; y++) {
-                        try {
-                            Tile t = gameState.board.getTile(x, y);
-                            if (t != null && !t.hasUnit() && t != clickedTile) {
-                                summonWraithlingAt(out, gameState, t);
-                                summonedCount++;
-                            }
-                        } catch (Exception e) {
-                            // Silently ignore array out-of-bounds
+
+                // 2. Prioritize clustering the remaining Wraithlings around the clicked tile
+                java.util.List<Tile> adjacentTiles = new java.util.ArrayList<>();
+                int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                
+                for (int[] dir : directions) {
+                    try {
+                        Tile adj = gameState.board.getTile(clickedTile.getTilex() + dir[0], clickedTile.getTiley() + dir[1]);
+                        if (adj != null && !adj.hasUnit()) {
+                            adjacentTiles.add(adj);
+                        }
+                    } catch (Exception e) {} // Ignore out of bounds
+                }
+                
+                // Randomize the adjacent positions
+                java.util.Collections.shuffle(adjacentTiles); 
+
+                for (Tile t : adjacentTiles) {
+                    if (summonedCount >= 3) break;
+                    summonWraithlingAt(out, gameState, t);
+                    summonedCount++;
+                }
+
+                // 3. Fallback: If adjacent tiles are full, place remaining on random empty tiles across the board
+                if (summonedCount < 3) {
+                    java.util.List<Tile> allEmptyTiles = new java.util.ArrayList<>();
+                    for (int x = 0; x < 9; x++) {
+                        for (int y = 0; y < 5; y++) {
+                            try {
+                                Tile t = gameState.board.getTile(x, y);
+                                if (t != null && !t.hasUnit()) {
+                                    allEmptyTiles.add(t);
+                                }
+                            } catch (Exception e) {}
                         }
                     }
+                    java.util.Collections.shuffle(allEmptyTiles);
+                    
+                    for (Tile t : allEmptyTiles) {
+                        if (summonedCount >= 3) break;
+                        summonWraithlingAt(out, gameState, t);
+                        summonedCount++;
+                    }
                 }
+
                 BasicCommands.addPlayer1Notification(out, "Swarm Unleashed!", 2);
 
                 // Deduct mana, update UI, and remove the card from hand
@@ -192,6 +223,34 @@ public class TileClicked implements EventProcessor {
                     BasicCommands.drawCard(out, c, i + 1, 0);
                 }
             } // For targeted damage/stun spells, validate that the clicked tile has an enemy unit and then apply the effect
+            
+            else if (spellCard.getCardname().equals("Horn of the Forsaken")) {
+                // Validate target: must be Player 1's Avatar
+                if (!clickedTile.hasUnit() || !(clickedTile.getUnit() instanceof Avatar) || clickedTile.getUnit().getPlayer() != gameState.player1) {
+                    BasicCommands.addPlayer1Notification(out, "Invalid Target! Select your Avatar.", 2);
+                    return; // keep targeting mode active
+                }
+
+                // Equip Horn
+                gameState.player1.setHornEquipped(true);
+                gameState.player1.setHornDurability(3);
+                BasicCommands.addPlayer1Notification(out, "Horn equipped (Durability: 3)", 2);
+
+                // Deduct mana, update UI, remove card
+                gameState.player1.setMana(gameState.player1.getMana() - spellCard.getManacost());
+                gameState.player1.showMana(out);
+                BasicCommands.deleteCard(out, gameState.handPositionClicked);
+                gameState.player1.getHandManager().removeCard(gameState.handPositionClicked - 1);
+
+                for (int i = 1; i <= 6; i++) {
+                    BasicCommands.deleteCard(out, i);
+                }
+                for (int i = 0; i < gameState.player1.getHandManager().getHandCards().size(); i++) {
+                    Card c = gameState.player1.getHandManager().getHandCards().get(i);
+                    BasicCommands.drawCard(out, c, i + 1, 0);
+                }
+            }
+            
             else if (clickedTile.hasUnit() && clickedTile.getUnit().getPlayer() != gameState.player1) {
 
                 structures.basic.Unit targetUnit = clickedTile.getUnit();
@@ -359,7 +418,7 @@ public class TileClicked implements EventProcessor {
                     attackerTile.setUnit(null);
                     attacker.setPositionByTile(landingTile);
                     try {
-                        Thread.sleep(1500);
+                        Thread.sleep(2500);
                     } catch (Exception e) {
                     }
                     // Attack
@@ -623,9 +682,11 @@ public class TileClicked implements EventProcessor {
         if (target.getPlayer() == attacker.getPlayer()) {
             return;
         }
-        if (target instanceof Avatar) {
+        
+        /*if (target instanceof Avatar) {
             return;
         }
+        */
 
         // Find an empty adjacent tile around player 1 avatar
         Unit avatar = findAvatar(gameState, gameState.player1);
