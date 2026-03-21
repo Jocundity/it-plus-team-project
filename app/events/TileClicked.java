@@ -257,6 +257,12 @@ public class TileClicked implements EventProcessor {
 
                 // Execute [28] Dark Terminus
                 if (spellCard.getCardname().equals("Dark Terminus")) {
+                    // Prevent targeting Avatars
+                    if (targetUnit instanceof Avatar) {
+                        BasicCommands.addPlayer1Notification(out, "Cannot target Avatar!", 2);
+                        return;
+                    }
+
                     targetUnit.setHealth(0);
                     BasicCommands.playUnitAnimation(out, targetUnit, structures.basic.UnitAnimationType.death);
                     try {
@@ -292,7 +298,18 @@ public class TileClicked implements EventProcessor {
                     BasicCommands.setUnitHealth(out, wraithling, 1);
                 } // Execute [29] Beamshock
                 else if (spellCard.getCardname().equals("Beamshock")) {
+                    // Validate target: must not be an Avatar
+                    if (targetUnit instanceof Avatar) {
+                        BasicCommands.addPlayer1Notification(out, "Invalid Target! Cannot stun Avatar.", 2);
+                        return; // Keep targeting mode active
+                    }
+
+                    // Apply stun effect: disable movement and attack for the next turn
+                    targetUnit.setCanMove(false);
+                    targetUnit.setCanAttack(false);
                     targetUnit.setIsStunned(true);
+
+                    // Notify the player that the unit has been stunned
                     BasicCommands.addPlayer1Notification(out, "Unit Stunned!", 2);
                 }
 

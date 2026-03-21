@@ -378,12 +378,12 @@ public class Unit {
     }
     // Getters and setters for isStunned
 
-    public boolean getIsStunned() {
-        return isStunned;
+    public boolean isStunned() {
+        return this.isStunned;
     }
 
-    public void setIsStunned(boolean val) {
-        this.isStunned = val;
+    public void setIsStunned(boolean isStunned) {
+        this.isStunned = isStunned;
     }
 
     // Story Card 18: Unit Death Trigger
@@ -468,6 +468,55 @@ public class Unit {
 
                                 break;
                             }
+                        } 
+                    }
+                    // [Story 18 Bugfix] Bad Omen: gain +1 attack when ANY unit dies
+                    if (u.getConfigFile() != null && u.getConfigFile().toLowerCase().replace("_", "").contains("badomen")) {
+                        // Bad Omen only gains +1 Attack (0 Health)
+                        u.applyPermanentBuff(out, 1, 0);
+                    }
+
+                    // [Story 18 Bugfix] Shadowdancer: 1 Dmg to Enemy Avatar, 1 Heal to Own Avatar when ANY unit dies
+                    if (u.getConfigFile() != null && u.getConfigFile().toLowerCase().replace("_", "").contains("shadowdancer")) {
+                        Player owner = u.getPlayer();
+                        Player enemy = (owner == gameState.player1) ? gameState.player2 : gameState.player1;
+
+                        Unit owningAvatar = null;
+                        Unit enemyAvatar = null;
+                        
+                        // Scan to find both avatars
+                        for (int ix = 0; ix < tiles.length; ix++) {
+                            for (int iy = 0; iy < tiles[ix].length; iy++) {
+                                Tile tempT = tiles[ix][iy];
+                                if (tempT != null && tempT.hasUnit() && tempT.getUnit() instanceof Avatar) {
+                                    if (tempT.getUnit().getPlayer() == owner) {
+                                        owningAvatar = tempT.getUnit();
+                                    } else {
+                                        enemyAvatar = tempT.getUnit();
+                                    }
+                                }
+                            }
+                        }
+
+                        // Apply 1 damage to enemy avatar
+                        if (enemyAvatar != null && enemyAvatar.getHealth() > 0) {
+                            int newHp = enemyAvatar.getHealth() - 1;
+                            enemyAvatar.setHealth(Math.max(0, newHp));
+                            BasicCommands.setUnitHealth(out, enemyAvatar, enemyAvatar.getHealth());
+                            enemy.setHealth(enemyAvatar.getHealth()); // Sync Player object backend
+                            
+                            // Play hit animation for feedback
+                            BasicCommands.playUnitAnimation(out, enemyAvatar, UnitAnimationType.hit);
+                            try { Thread.sleep(300); } catch (Exception e){}
+                            BasicCommands.playUnitAnimation(out, enemyAvatar, UnitAnimationType.idle);
+                        }
+                        
+                        // Apply 1 heal to owning avatar (do not exceed max health)
+                        if (owningAvatar != null && owningAvatar.getHealth() < owningAvatar.getMaxHealth()) {
+                            int newHp = owningAvatar.getHealth() + 1;
+                            owningAvatar.setHealth(newHp);
+                            BasicCommands.setUnitHealth(out, owningAvatar, owningAvatar.getHealth());
+                            owner.setHealth(owningAvatar.getHealth()); // Sync Player object backend
                         }
                     }
                 }
