@@ -371,7 +371,7 @@ public class AIPlayer extends Player {
                                 aiUnit.setPositionByTile(bestMoveTile);
                                 aiUnit.setCanMove(false); 
                                 
-                                try { Thread.sleep(1500); } catch (Exception e) {} 
+                                try { Thread.sleep(2500); } catch (Exception e) {} 
                                 
                                 if (aiUnit.getCanAttack()) {
                                     tryAttackAdjacentEnemy(out, gameState, bestMoveTile, aiUnit);
@@ -427,19 +427,28 @@ public class AIPlayer extends Player {
             for (int dy = -2; dy <= 2; dy++) {
                 int cx = startTile.getTilex() + dx;
                 int cy = startTile.getTiley() + dy;
-                Tile candidate = gameState.board.getTile(cx, cy);
                 
+                try {
+                    Tile candidate = gameState.board.getTile(cx, cy);
+                    
                 if (candidate != null && !candidate.hasUnit()) {
-                    double dist = calculateDistance(candidate, targetTile);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        bestTile = candidate;
+                    // Validate path with official movement rules
+                	// Prevent front-end animation freeze on blocked paths
+                    if (gameState.highlightManager.isValidMove(startTile.getTilex(), startTile.getTiley(), cx, cy, candidate, gameState)) {
+                        double dist = calculateDistance(candidate, targetTile);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            bestTile = candidate;
+                        }
                     }
                 }
+            } catch (Exception e) {
+                // Safely ignore out-of-bounds tiles
             }
         }
-        return bestTile;
     }
+    return bestTile;
+}
 
     private double calculateDistance(Tile t1, Tile t2) {
         return Math.sqrt(Math.pow(t1.getTilex() - t2.getTilex(), 2) + Math.pow(t1.getTiley() - t2.getTiley(), 2));

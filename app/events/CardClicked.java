@@ -23,6 +23,8 @@ public class CardClicked implements EventProcessor {
 
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
+    	
+    	gameState.highlightManager.clearHighlights(out);
 
         // If it is not currently Player 1's turn, directly ignore all click operations on the hand cards.
         if (!gameState.isPlayer1Turn) {
@@ -67,48 +69,13 @@ public class CardClicked implements EventProcessor {
         gameState.handPositionClicked = handPosition;
 
         String cardName = clickedCard.getCardname();
-        if (cardName.equals("Horn of the Forsaken")) {
-            if (gameState.player1.getMana() < clickedCard.getManacost()) {
-                BasicCommands.addPlayer1Notification(out, "Not enough mana!", 2);
-                return;
-            }
 
-            // Equip Horn to player 1 avatar
-            gameState.player1.setHornEquipped(true);
-            gameState.player1.setHornDurability(3);
-
-            // Deduct mana
-            gameState.player1.setMana(gameState.player1.getMana() - clickedCard.getManacost());
-            gameState.player1.showMana(out);
-
-            // Remove the card from hand
-            gameState.player1.getHandManager().removeCard(handPosition - 1);
-
-            // Refresh hand UI
-            for (int i = 1; i <= 6; i++) {
-                BasicCommands.deleteCard(out, i);
-            }
-            for (int i = 0; i < gameState.player1.getHandManager().getHandCards().size(); i++) {
-                Card c = gameState.player1.getHandManager().getHandCards().get(i);
-                BasicCommands.drawCard(out, c, i + 1, 0);
-            }
-
-            // Reset selection states
-            gameState.isSpellTargeting = false;
-            gameState.isUnitSummoning = false;
-            gameState.selectedCard = null;
-            gameState.handPositionClicked = -1;
-
-            BasicCommands.addPlayer1Notification(out, "Horn equipped (Durability: 3)", 2);
-            return;
-        }
-
-        // List the cards that are NOT units based on your JSON files
-        if (cardName.equals("Wraithling Swarm")
-                || cardName.equals("Dark Terminus")
-                || cardName.equals("Beamshock")
-                || cardName.equals("Sundrop Elixir")
-                || cardName.equals("Truestrike")) {
+            // List the cards that are NOT units based on your JSON files
+            if (cardName.equals("Wraithling Swarm")
+                    || cardName.equals("Dark Terminus")
+                    || cardName.equals("Beamshock")
+                    || cardName.equals("Sundrop Elixir")
+                    || cardName.equals("Horn of the Forsaken")) {
 
             // This is a spell/artifact, NOT a unit
             gameState.isUnitSummoning = false;
@@ -160,24 +127,17 @@ public class CardClicked implements EventProcessor {
                     gameState.selectedTile = null;
                 }
 
-                // 4. Safely iterate through the grid to highlight empty tiles (Dynamic bounds to prevent crashes)
-                for (int x = 0; x < 15; x++) {
-                    for (int y = 0; y < 15; y++) {
-                        try {
-                            Tile t = gameState.board.getTile(x, y);
-                            // A valid summon target for Wraithling Swarm is any unoccupied tile
-                            if (t != null && !t.hasUnit()) {
-                                BasicCommands.drawTile(out, t, 1);
-                                Thread.sleep(2); // Tiny delay to prevent WebSocket flooding and UI freeze
-                            }
-                        } catch (Exception e) {
-                            // Silently ignore array out-of-bounds if the grid is smaller than 15x15
-                        }
-                    }
-                }
+                // 4. Use HighlightManager to properly track and highlight empty tiles
+                gameState.highlightManager.highlightEmptyTiles(gameState, out);
 
                 // 5. Provide UI feedback to the user instructing them on the next action
                 BasicCommands.addPlayer1Notification(out, "Select empty tile to swarm!", 2);
+            }
+            
+            else if (cardName.equals("Horn of the Forsaken")) {
+                gameState.handPositionClicked = handPosition;
+                gameState.highlightManager.highlightFriendlyAvatar(gameState, out); 
+                BasicCommands.addPlayer1Notification(out, "Select your Avatar to equip", 2);
             }
 
         } else {
