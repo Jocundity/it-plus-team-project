@@ -26,14 +26,18 @@ import structures.basic.Avatar;
  */
 public class CardClicked implements EventProcessor {
 
-    @Override
-    public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-    	
-    	gameState.highlightManager.clearHighlights(out);
+@Override
+public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
 
-        // If it is not currently Player 1's turn, directly ignore all click operations on the hand cards.
-        if (!gameState.isPlayer1Turn) {
-            return;
+    // Stop all hand-card interaction after the game is over
+    if (gameState.gameOver) return;
+
+    gameState.highlightManager.clearHighlights(out);
+
+    // If it is not currently Player 1's turn, directly ignore all click operations on the hand cards.
+    if (!gameState.isPlayer1Turn) {
+        return;
+    }
         }
 
         int handPosition = message.get("position").asInt();

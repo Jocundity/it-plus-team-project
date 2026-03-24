@@ -368,27 +368,53 @@ public class TileClicked implements EventProcessor {
 
             if (enemy && adjacent && attacker.getCanAttack()) {
 
+                // (Story Card 24) If adjacent Provoke exists, only Provoke can be attacked
+                if (isBlockedByProvoke(attackerTile, clickedTile, gameState)) {
+                    BasicCommands.addPlayer1Notification(out, "This unit must attack a Provoke enemy first!", 2);
+                    return;
+                }
+
                 gameState.highlightManager.clearHighlights(out);
 
                 // Attack enemy and play attack animation
                 BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
-                try {
-                    Thread.sleep(1000);
-                } catch (Exception e) {
-                }
+                try { Thread.sleep(1000); } catch (Exception e) {}
+
+                // Story Card 20: record target health before damage
+                int oldTargetHealth = target.getHealth();
+
                 target.decreaseHealth(gameState, out, attacker.getAttack());
+
+                // Trigger Horn on hit if needed
                 triggerHornOnHitIfNeeded(out, gameState, attacker, target);
+
+                // Story Card 20: trigger only if positive damage was actually dealt
+                if (target.getHealth() < oldTargetHealth) {
+                triggerUnitDealsDamage(attacker, target, gameState, out);
+                }
+
                 // (Story Card 12) Counterattack
                 if (target.getHealth() > 0) {
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.attack);
-                    try {
-                        Thread.sleep(1000);
-                    } catch (Exception e) {
-                    }
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+
+                    // Story Card 20: record attacker health before counterattack damage
+                    int oldAttackerHealth = attacker.getHealth();
+
                     attacker.decreaseHealth(gameState, out, target.getAttack());
+
+                    // Story Card 20: counterattack also counts as unit dealing damage
+                    if (attacker.getHealth() < oldAttackerHealth) {
+                        triggerUnitDealsDamage(target, attacker, gameState, out);
+                    }
+
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
                     BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.idle);
                 }
+                }
+
+                BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
+            }
 
                 attacker.setCanAttack(false);
                 attacker.setCanMove(false);
@@ -425,28 +451,47 @@ public class TileClicked implements EventProcessor {
                     landingTile.setUnit(attacker);
                     attackerTile.setUnit(null);
                     attacker.setPositionByTile(landingTile);
+
                     try {
                         Thread.sleep(2500);
                     } catch (Exception e) {
                     }
                     // Attack
                     BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.attack);
-                    try {
-                        Thread.sleep(1000);
-                    } catch (Exception e) {
-                    }
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+
+                    // Story Card 20: record target health before damage
+                    int oldTargetHealth = target.getHealth();
+
                     target.decreaseHealth(gameState, out, attacker.getAttack());
+
+                    // Trigger Horn on hit if needed
                     triggerHornOnHitIfNeeded(out, gameState, attacker, target);
+
+                    // Story Card 20: trigger only if positive damage was actually dealt
+                    if (target.getHealth() < oldTargetHealth) {
+                    triggerUnitDealsDamage(attacker, target, gameState, out);
+                    }
                     
                     // (Story Card 12) Counterattack after move
                     if (target.getHealth() > 0 && isAdjacent8(landingTile, clickedTile)) {
                         BasicCommands.playUnitAnimation(out, target, UnitAnimationType.attack);
-                        try {
-                            Thread.sleep(1000);
-                        } catch (Exception e) {
-                        }
-                        attacker.decreaseHealth(gameState, out, target.getAttack());
-                        BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
+
+                    try { Thread.sleep(1000); } catch (Exception e) {}
+
+                    // Story Card 20: record attacker health before counterattack damage
+                    int oldAttackerHealth = attacker.getHealth();
+
+                    attacker.decreaseHealth(gameState, out, target.getAttack());
+
+                    // Story Card 20: counterattack also counts as unit dealing damage
+                    if (attacker.getHealth() < oldAttackerHealth) {
+                        triggerUnitDealsDamage(target, attacker, gameState, out);
+                    }
+
+                    BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
+                    BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.idle);
+                
                     }
 
                     attacker.setCanAttack(false);
@@ -604,6 +649,13 @@ public class TileClicked implements EventProcessor {
         wraithling.setCanMove(false);
         wraithling.setCanAttack(false);
     }
+    // (Story Card 20) Trigger when a unit successfully deals damage to an enemy unit
+    private void triggerUnitDealsDamage(Unit dealer, Unit target, GameState gameState, ActorRef out) {
+        if (dealer == null || target == null) return;
+        if (dealer.getPlayer() == target.getPlayer()) return;
+
+        BasicCommands.addPlayer1Notification(out, "Unit Deals Damage triggered", 2);
+    }
 
     private void triggerHornOnHitIfNeeded(ActorRef out, GameState gameState, Unit attacker, Unit target) {
         // Horn only applies to player 1 avatar
@@ -624,6 +676,81 @@ public class TileClicked implements EventProcessor {
         if (target.getPlayer() == attacker.getPlayer()) {
             return;
         }
+        if (target instanceof Avatar) {
+            return;
+        }
+
+        int[][] directions = {
+            {0,1}, {0,-1}, {1,0}, {-1,0},
+            {1,1}, {1,-1}, {-1,1}, {-1,-1}
+        };
+
+        Tile attackerTile = attacker.getPosition() != null
+            ? gameState.board.getTile(attacker.getPosition().getTilex(), attacker.getPosition().getTiley())
+            : null;
+
+        if (attackerTile == null) return;
+
+        for (int[] dir : directions) {
+            Tile summonTile = gameState.board.getTile(
+                attackerTile.getTilex() + dir[0],
+                attackerTile.getTiley() + dir[1]
+            );
+
+            if (summonTile != null && !summonTile.hasUnit()) {
+                Unit wraithling = utils.BasicObjectBuilders.loadUnit(
+                    utils.StaticConfFiles.wraithling,
+                    2000 + summonTile.getTilex() * 10 + summonTile.getTiley(),
+                    Unit.class
+                );
+
+                wraithling.setPlayer(gameState.player1);
+                wraithling.setAttack(1);
+                wraithling.setHealth(1);
+                wraithling.setMaxHealth(1);
+                wraithling.setPositionByTile(summonTile);
+                summonTile.setUnit(wraithling);
+
+                BasicCommands.drawUnit(out, wraithling, summonTile);
+                try { Thread.sleep(100); } catch (Exception e) {}
+
+                BasicCommands.setUnitAttack(out, wraithling, 1);
+                BasicCommands.setUnitHealth(out, wraithling, 1);
+                break;
+            }
+        }
+    }
+
+    // (Story Card 24) Check if attack is blocked by adjacent Provoke unit
+    private boolean isBlockedByProvoke(Tile attackerTile, Tile clickedTile, GameState gameState) {
+        int ax = attackerTile.getTilex();
+        int ay = attackerTile.getTiley();
+
+        int[][] directions = {
+            {0,1}, {0,-1}, {1,0}, {-1,0},
+            {1,1}, {1,-1}, {-1,1}, {-1,-1}
+        };
+
+        boolean hasAdjacentProvoke = false;
+
+        for (int[] dir : directions) {
+            Tile adjTile = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+
+            if (adjTile != null && adjTile.hasUnit()) {
+                Unit u = adjTile.getUnit();
+
+                if (u.getPlayer() != attackerTile.getUnit().getPlayer() && u.hasProvoke()) {
+                    hasAdjacentProvoke = true;
+
+                    if (adjTile == clickedTile) {
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return hasAdjacentProvoke;
+    }
         
         /*if (target instanceof Avatar) {
             return;
