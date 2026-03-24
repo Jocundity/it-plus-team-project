@@ -1,6 +1,7 @@
 package structures.basic;
 
 import akka.actor.ActorRef;
+import structures.basic.Avatar;
 import commands.BasicCommands;
 import structures.GameState;
 import java.util.ArrayList;
@@ -41,6 +42,11 @@ public class HighlightManager {
 
         return false;
     }
+	
+	// Getter for targetTiles
+	public ArrayList<Tile> getTargetTiles() {
+		return this.targetTiles;
+	}
 	
 	// Core movement validation rule
 	public boolean isValidMove(int startX, int startY, int targetX, int targetY,  Tile target, GameState gs) {
@@ -206,7 +212,7 @@ public class HighlightManager {
 		}
 	}
 	
-	// Highlight all tiles containing units that belong to the player
+	// Highlight all tiles containing units that belong to the enemy player
 	public void highlightAllEnemyUnitTiles(GameState gameState, ActorRef out, Player player) {
 		ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, player);
 		
@@ -217,6 +223,25 @@ public class HighlightManager {
 			try { Thread.sleep(80); } catch (Exception e) {}
 		}
 	}
+	
+	// Highlight all tiles containing units 
+	// that belong to the enemy player except for enemy avatar
+		public void highlightAllEnemyUnitTilesExceptAvatar(GameState gameState, ActorRef out, Player player) {
+			ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, player);
+			
+			//ArrayList<Tile> validTargetTiles = new ArrayList<>();
+			
+			// Draw each tile in red
+			for (Tile tile : enemyTiles) {
+				if (!(tile.getUnit() instanceof Avatar)) {
+					//validTargetTiles.add(tile);
+					BasicCommands.drawTile(out, tile, 2);
+					targetTiles.add(tile);
+					try { Thread.sleep(80); } catch (Exception e) {}
+				}
+				
+			}
+		}
 	
 	// Highlight single tile in red
 	public void highlightSingleTileRed(Tile tile, ActorRef out) {
@@ -287,4 +312,35 @@ public class HighlightManager {
                     }
                 }
             }
+            // (Story card 30) Highlight empty tiles for Wraithling Swarm
+            public void highlightEmptyTiles(GameState gameState, ActorRef out) {
+                clearHighlights(out);
+                for (int x = 0; x <= 9; x++) {
+                    for (int y = 0; y <= 5; y++) {
+                        Tile t = gameState.board.getTile(x, y);
+                        if (t != null && !t.hasUnit()) {
+                            BasicCommands.drawTile(out, t, 1); // 1 = white highlight
+                            targetTiles.add(t); // Tell the manager to track this tile
+                            try { Thread.sleep(10); } catch (Exception e) {}
+                        }
+                    }
+                }
+            }
+            // (Story card) Highlight friendly Avatar for equipping artifacts
+            public void highlightFriendlyAvatar(GameState gameState, ActorRef out) {
+                clearHighlights(out);
+                for (int x = 0; x <= 9; x++) {
+                    for (int y = 0; y <= 5; y++) {
+                        Tile t = gameState.board.getTile(x, y);
+                        // Highlight Player 1's Avatar
+                        if (t != null && t.hasUnit() && t.getUnit() instanceof Avatar && t.getUnit().getPlayer() == gameState.player1) {
+                            BasicCommands.drawTile(out, t, 1); // 1 = white highlight
+                            targetTiles.add(t);
+                            try { Thread.sleep(10); } catch (Exception e) {}
+                        }
+                    }
+                }
+            }
 		}
+
+

@@ -27,4 +27,29 @@ public class StaticConfFiles {
 	public final static String f1_projectiles = "conf/gameconfs/effects/f1_projectiles.json";
 	public final static String f1_summon = "conf/gameconfs/effects/f1_summon.json";
 	
+	// Added central mapping logic for Story Card 17
+		public static String getUnitConf(String cardName) {
+			switch (cardName) {
+				// Abyssian (Player 1) units
+				case "Bad Omen": return "conf/gameconfs/units/bad_omen.json";
+				case "Gloom Chaser": return "conf/gameconfs/units/gloom_chaser.json";
+				case "Shadow Watcher": return "conf/gameconfs/units/shadow_watcher.json";
+				case "Nightsorrow Assassin": return "conf/gameconfs/units/nightsorrow_assassin.json";
+				case "Rock Pulveriser": return "conf/gameconfs/units/rock_pulveriser.json";
+				case "Bloodmoon Priestess": return "conf/gameconfs/units/bloodmoon_priestess.json";
+				case "Shadowdancer": return "conf/gameconfs/units/shadowdancer.json";
+
+				// Lyonar (Player 2) units
+				case "Skyrock Golem": return "conf/gameconfs/units/skyrock_golem.json";
+				case "Swamp Entangler": return "conf/gameconfs/units/swamp_entangler.json";
+				case "Silverguard Knight": return "conf/gameconfs/units/silverguard_knight.json";
+				case "Saberspine Tiger": return "conf/gameconfs/units/saberspine_tiger.json";
+				case "Young Flamewing": return "conf/gameconfs/units/young_flamewing.json";
+				case "Silverguard Squire": return "conf/gameconfs/units/silverguard_squire.json";
+				case "Ironcliff Guardian": return "conf/gameconfs/units/ironcliff_guardian.json";
+
+				default: return null;
+			}
+		}
+	
 }

@@ -37,6 +37,9 @@ public class Initalize implements EventProcessor {
         gameState.board = new Board();
         gameState.board.drawBoard(out);
 
+        // Allow the front-end ample time to render the 45 tiles to prevent message channel congestion 
+        try { Thread.sleep(1000); } catch (Exception e) {}
+        
         /* Creates new player objects,
          * sets initial health and mana (Story card 3) */
         gameState.player1 = new Player();
@@ -60,34 +63,53 @@ public class Initalize implements EventProcessor {
         player1Avatar.setCanMove(true);
         player1Avatar.setCanAttack(true);
         
+        player1Avatar.setAttack(2);
+        player1Avatar.setMaxHealth(20);
+        player1Avatar.setHealth(20);
 
         BasicCommands.drawTile(out, tile1, 0);
+        try { Thread.sleep(200); } catch (Exception e) {}
+
         player1Avatar.drawUnit(out, tile1);
-        
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitAttack(out, player1Avatar, player1Avatar.getAttack());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitHealth(out, player1Avatar, player1Avatar.getHealth());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        gameState.player1.showLife(out);
 
         Avatar player2Avatar = new Avatar(gameState.player2, 2);
         Tile tile2 = gameState.board.getTile(8, 3);    
         player2Avatar.setPlayer(gameState.player2);
         tile2.setUnit(player2Avatar);
         player2Avatar.setPositionByTile(tile2);
+        
+        player2Avatar.setAttack(2);
+        player2Avatar.setMaxHealth(20);
+        player2Avatar.setHealth(20);
+        
         BasicCommands.drawTile(out, tile2, 0);
+        try { Thread.sleep(200); } catch (Exception e) {}
+
         player2Avatar.drawUnit(out, tile2);
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitAttack(out, player2Avatar, player2Avatar.getAttack());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        BasicCommands.setUnitHealth(out, player2Avatar, player2Avatar.getHealth());
+        try { Thread.sleep(100); } catch (Exception e) {}
+
+        gameState.player2.showLife(out);
 
         try {
             // Initialise both decks
             List<Card> player1Deck = OrderedCardLoader.getPlayer1Cards(1);
             List<Card> player2Deck = OrderedCardLoader.getPlayer2Cards(1);
             
-            /*  For testing purposes
-            Card darkTerminus = null;
-            for (Card c : player1Deck) { if (c.getCardname().equals("Dark Terminus")) darkTerminus = c; }
-            if (darkTerminus != null) { player1Deck.remove(darkTerminus); player1Deck.add(0, darkTerminus); }
-
-            Card beamShock = null;
-            for (Card c : player2Deck) { if (c.getCardname().equals("Beamshock")) beamShock = c; }
-            if (beamShock != null) { player1Deck.add(1, beamShock); }
-            */
-
             gameState.player1.initDeck(player1Deck);
             gameState.player2.initDeck(player2Deck);
 
