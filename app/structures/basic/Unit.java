@@ -511,15 +511,6 @@ public class Unit {
         }
     }
 
-	// Getter and setter for configFile
-    public String getConfigFile() {
-        return configFile;
-    }
-
-    public void setConfigFile(String configFile) {
-        this.configFile = configFile;
-    }
-
     // (Story Card 24) Check if this unit has Provoke ability
     public boolean hasProvoke() {
         if (configFile == null) return false;

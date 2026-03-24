@@ -38,7 +38,7 @@ public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
     if (!gameState.isPlayer1Turn) {
         return;
     }
-        }
+        
 
         int handPosition = message.get("position").asInt();
 
