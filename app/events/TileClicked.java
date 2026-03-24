@@ -11,6 +11,7 @@ import structures.basic.Unit;
 import structures.basic.Avatar;
 import structures.basic.Player;
 import structures.basic.Card;
+import structures.basic.WraithlingManager;
 import utils.BasicObjectBuilders;
 import utils.StaticConfFiles;
 
@@ -160,7 +161,7 @@ public class TileClicked implements EventProcessor {
                 }
 
                 // 1. Summon the first Wraithling at the clicked tile
-                summonWraithlingAt(out, gameState, clickedTile);
+                WraithlingManager.placeWraithling(gameState, out, clickedTile, gameState.player1);
                 int summonedCount = 1;
 
                 // 2. Prioritize clustering the remaining Wraithlings around the clicked tile
@@ -181,7 +182,7 @@ public class TileClicked implements EventProcessor {
 
                 for (Tile t : adjacentTiles) {
                     if (summonedCount >= 3) break;
-                    summonWraithlingAt(out, gameState, t);
+                    WraithlingManager.placeWraithling(gameState, out, t, gameState.player1);
                     summonedCount++;
                 }
 
@@ -202,7 +203,7 @@ public class TileClicked implements EventProcessor {
                     
                     for (Tile t : allEmptyTiles) {
                         if (summonedCount >= 3) break;
-                        summonWraithlingAt(out, gameState, t);
+                        WraithlingManager.placeWraithling(gameState, out, t, gameState.player1);
                         summonedCount++;
                     }
                 }
@@ -222,6 +223,10 @@ public class TileClicked implements EventProcessor {
                     Card c = gameState.player1.getHandManager().getHandCards().get(i);
                     BasicCommands.drawCard(out, c, i + 1, 0);
                 }
+                
+                gameState.isSpellTargeting = false;
+                gameState.highlightManager.clearHighlights(out);
+                return;
             } // For targeted damage/stun spells, validate that the clicked tile has an enemy unit and then apply the effect
             
             else if (spellCard.getCardname().equals("Horn of the Forsaken")) {
@@ -249,6 +254,10 @@ public class TileClicked implements EventProcessor {
                     Card c = gameState.player1.getHandManager().getHandCards().get(i);
                     BasicCommands.drawCard(out, c, i + 1, 0);
                 }
+                
+                gameState.isSpellTargeting = false;
+                gameState.highlightManager.clearHighlights(out);
+                return;
             }
             
             else if (clickedTile.hasUnit() && clickedTile.getUnit().getPlayer() != gameState.player1) {
@@ -259,6 +268,7 @@ public class TileClicked implements EventProcessor {
                 if (spellCard.getCardname().equals("Dark Terminus")) {
                     // Prevent targeting Avatars
                     if (targetUnit instanceof Avatar) {
+                    	
                         BasicCommands.addPlayer1Notification(out, "Cannot target Avatar!", 2);
                         return;
                     }
@@ -274,44 +284,14 @@ public class TileClicked implements EventProcessor {
                     BasicCommands.deleteUnit(out, targetUnit);
                     BasicCommands.addPlayer1Notification(out, "Unit Destroyed!", 2);
 
-                    // Use absolutely unique counter ID
-                    structures.basic.Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, playerUnitIdCounter++, structures.basic.Unit.class);
-                    
-                    // Critical fix: Assign stats in advance
-                    wraithling.setAttack(1);
-                    wraithling.setHealth(1);
-                    wraithling.setMaxHealth(1);
-                    
-                    wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
-                    wraithling.setPlayer(gameState.player1);
-                    wraithling.setPositionByTile(clickedTile);
-                    clickedTile.setUnit(wraithling);
-
-                    // Draw the Wraithling on the board and then immediately set its health and attack to 1/1 to reflect the card's effect
-                    BasicCommands.drawUnit(out, wraithling, clickedTile);
+                    WraithlingManager.placeWraithling(gameState, out, clickedTile, gameState.player1);
                     try {
                         Thread.sleep(100);
                     } catch (Exception e) {
                     }
 
-                    BasicCommands.setUnitAttack(out, wraithling, 1);
-                    BasicCommands.setUnitHealth(out, wraithling, 1);
-                } // Execute [29] Beamshock
-                else if (spellCard.getCardname().equals("Beamshock")) {
-                    // Validate target: must not be an Avatar
-                    if (targetUnit instanceof Avatar) {
-                        BasicCommands.addPlayer1Notification(out, "Invalid Target! Cannot stun Avatar.", 2);
-                        return; // Keep targeting mode active
-                    }
-
-                    // Apply stun effect: disable movement and attack for the next turn
-                    targetUnit.setCanMove(false);
-                    targetUnit.setCanAttack(false);
-                    targetUnit.setIsStunned(true);
-
-                    // Notify the player that the unit has been stunned
-                    BasicCommands.addPlayer1Notification(out, "Unit Stunned!", 2);
-                }
+                    
+                } 
 
                 // Deduct mana, update UI, and remove the card from hand
                 gameState.player1.setMana(gameState.player1.getMana() - spellCard.getManacost());
@@ -356,6 +336,16 @@ public class TileClicked implements EventProcessor {
             gameState.isSpellTargeting = false;
             gameState.selectedCard = null;
             gameState.handPositionClicked = -1;
+            
+            // Ensure all unit animations return to idle
+            Tile[][] tiles = gameState.board.getTiles();
+            for (Tile[] row : tiles) {
+                for (Tile t : row) {
+                    if (t != null && t.hasUnit() && t.getUnit().getHealth() > 0) {
+                        BasicCommands.playUnitAnimation(out, t.getUnit(), UnitAnimationType.idle);
+                    }
+                }
+            }
 
             return;
         }
@@ -397,6 +387,7 @@ public class TileClicked implements EventProcessor {
                     }
                     attacker.decreaseHealth(gameState, out, target.getAttack());
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
+                    BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.idle);
                 }
 
                 attacker.setCanAttack(false);
@@ -486,7 +477,12 @@ public class TileClicked implements EventProcessor {
                 unit.setCanMove(false);
                 gameState.selectedTile = null;
                 return;
+            } else {
+            	gameState.selectedTile = null;
+                gameState.highlightManager.clearHighlights(out);
+                BasicCommands.addPlayer1Notification(out, "Invalid Move!", 2);
             }
+            return;
         }
 
         // =========================
@@ -508,12 +504,17 @@ public class TileClicked implements EventProcessor {
 
                 gameState.selectedTile = clickedTile;
 
-                if (unit.getCanMove()) {
-                    gameState.highlightManager.highlightMovementRange(clickedTile, gameState, out);
-                }
+                // Only highlight if the unit is not stunned
+                if (!unit.getIsStunned()) {
+                	if (unit.getCanMove()) {
+                        gameState.highlightManager.highlightMovementRange(clickedTile, gameState, out);
+                    }
 
-                if (unit.getCanAttack()) {
-                    gameState.highlightManager.highlightAttackTargets(clickedTile, gameState, out);
+                    if (unit.getCanAttack()) {
+                        gameState.highlightManager.highlightAttackTargets(clickedTile, gameState, out);
+                    }
+                } else {
+                	BasicCommands.addPlayer1Notification(out, "This unit is stunned!", 2);
                 }
             }
         } else {
@@ -530,83 +531,7 @@ public class TileClicked implements EventProcessor {
         return Math.max(dx, dy) == 1; // include diagonal
     }
 
-    /* Simplified and moved logic to (decreaseHealth)
-   *  inside of Unit class for better reusability  
-
-    
-    // (Story Card 13) Unified Damage + Death Handling
-    private boolean applyDamageAndHandleDeath(ActorRef out,
-                                             GameState gameState,
-                                             Tile targetTile,
-                                             Unit target,
-                                             int damage) {
-        // Story 14: Avatar Damage
-        if (target instanceof Avatar) {
-
-            Player owner = target.getPlayer();
-
-            int newPlayerHealth = owner.getHealth() - damage;
-            owner.setHealth(newPlayerHealth);
-        
-            //Synchronize Avatar's own blood volume (for UI bubble)
-            target.setHealth(newPlayerHealth);
-            BasicCommands.setUnitHealth(out, target, Math.max(newPlayerHealth, 0));
-            owner.showLife(out);
-
-        // Story 15: Win / Loss
-            if (newPlayerHealth <= 0) {
-
-                if (owner == gameState.player1) {
-                    BasicCommands.addPlayer1Notification(out, "Game Over - You Lose!", 5);
-                } else {
-                    BasicCommands.addPlayer1Notification(out, "Victory - You Win!", 5);
-                }
-
-                gameState.gameOver = true;
-            }
-
-            return false; // Avatar will not be deleted.
-        }        
-
-        int newHealth = target.getHealth() - damage;
-        target.setHealth(newHealth);
-
-        BasicCommands.setUnitHealth(out, target, Math.max(newHealth, 0));
-        try { Thread.sleep(150); } catch (Exception e) {}
-
-        if (newHealth <= 0) {
-            BasicCommands.playUnitAnimation(out, target, UnitAnimationType.death);
-            try { Thread.sleep(300); } catch (Exception e) {}
-
-            BasicCommands.deleteUnit(out, target);
-
-            if (targetTile != null) {
-                targetTile.setUnit(null);
-            }
-
-            return true;
-        }
-
-        return false;
-    }
-
-    // (Story Card 12) Counterattack
-    private void tryCounterAttackOnce(ActorRef out,
-                                      GameState gameState,
-                                      Tile attackerTile,
-                                      Unit attacker,
-                                      Tile defenderTile,
-                                      Unit defender) {
-
-        if (defender.getHealth() <= 0) return;
-        if (!isAdjacent8(attackerTile, defenderTile)) return;
-
-        int ms = BasicCommands.playUnitAnimation(out, defender, UnitAnimationType.attack);
-        try { Thread.sleep(ms); } catch (Exception e) {}
-
-        applyDamageAndHandleDeath(out, gameState, attackerTile, attacker, defender.getAttack());
-    }
-     */
+ 
     // Find the avatar unit belonging to the specified player
     private Unit findAvatar(GameState gameState, Player player) {
 
@@ -738,41 +663,8 @@ public class TileClicked implements EventProcessor {
             int targetX = x - 1;
             Tile behindTile = gameState.board.getTile(targetX, y);
             if (behindTile != null && !behindTile.hasUnit()) {
-            	// Use absolutely unique counter ID
-                Unit wraithling = utils.BasicObjectBuilders.loadUnit(utils.StaticConfFiles.wraithling, playerUnitIdCounter++, Unit.class);
-                wraithling.setConfigFile(utils.StaticConfFiles.wraithling);
-                wraithling.setPlayer(gameState.player1);
-
-                // Set the unit's attributes in the backend data first
-                wraithling.setAttack(1);
-                wraithling.setHealth(1);
-                wraithling.setMaxHealth(1);
-
-                wraithling.setPositionByTile(behindTile);
-                behindTile.setUnit(wraithling);
-
-                BasicCommands.playEffectAnimation(out, utils.BasicObjectBuilders.loadEffect(utils.StaticConfFiles.f1_summon), behindTile);
-                try {
-                    Thread.sleep(100);
-                } catch (Exception e) {
-                } // Wait for the summoning effect animation
-
-                // Instruct the front-end to draw the unit model
-                BasicCommands.drawUnit(out, wraithling, behindTile);
-                try {
-                    Thread.sleep(100);
-                } catch (Exception e) {
-                } // Wait 100ms to allow the front-end to finish rendering the model
-
-                // Update Attack UI
-                BasicCommands.setUnitAttack(out, wraithling, wraithling.getAttack());
-                try {
-                    Thread.sleep(100);
-                } catch (Exception e) {
-                } // Separate the UI update commands to prevent asynchronous overlapping
-
-                // Update Health UI
-                BasicCommands.setUnitHealth(out, wraithling, wraithling.getHealth());
+            	WraithlingManager.placeWraithling(gameState, out, behindTile, gameState.player1);
+                
             }
         } // 2. Nightsorrow Assassin
         else if (cardName.equals("Nightsorrow Assassin")) {

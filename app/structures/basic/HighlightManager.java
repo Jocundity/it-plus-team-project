@@ -1,6 +1,7 @@
 package structures.basic;
 
 import akka.actor.ActorRef;
+import structures.basic.Avatar;
 import commands.BasicCommands;
 import structures.GameState;
 import java.util.ArrayList;
@@ -15,6 +16,11 @@ public class HighlightManager {
 
 	public HighlightManager() {
 		// TODO Auto-generated constructor stub
+	}
+	
+	// Getter for targetTiles
+	public ArrayList<Tile> getTargetTiles() {
+		return this.targetTiles;
 	}
 	
 	// Core movement validation rule
@@ -148,7 +154,7 @@ public class HighlightManager {
 		}
 	}
 	
-	// Highlight all tiles containing units that belong to the player
+	// Highlight all tiles containing units that belong to the enemy player
 	public void highlightAllEnemyUnitTiles(GameState gameState, ActorRef out, Player player) {
 		ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, player);
 		
@@ -159,6 +165,25 @@ public class HighlightManager {
 			try { Thread.sleep(80); } catch (Exception e) {}
 		}
 	}
+	
+	// Highlight all tiles containing units 
+	// that belong to the enemy player except for enemy avatar
+		public void highlightAllEnemyUnitTilesExceptAvatar(GameState gameState, ActorRef out, Player player) {
+			ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, player);
+			
+			//ArrayList<Tile> validTargetTiles = new ArrayList<>();
+			
+			// Draw each tile in red
+			for (Tile tile : enemyTiles) {
+				if (!(tile.getUnit() instanceof Avatar)) {
+					//validTargetTiles.add(tile);
+					BasicCommands.drawTile(out, tile, 2);
+					targetTiles.add(tile);
+					try { Thread.sleep(80); } catch (Exception e) {}
+				}
+				
+			}
+		}
 	
 	// Highlight single tile in red
 	public void highlightSingleTileRed(Tile tile, ActorRef out) {

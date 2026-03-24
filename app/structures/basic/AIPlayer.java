@@ -73,7 +73,23 @@ public class AIPlayer extends Player {
     				if (anyDamaged(gameState)) {
     					playable.add(card);
     				}
-    			} else {
+    			} else if (card.getCardname().equals("Beamshock")){
+    				// Do not add Beamshock if player avatar is the only enemy unit
+    				ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, gameState.player1);
+    				boolean hasNonAvatarUnit = false;
+    				
+    				for (Tile tile : enemyTiles) {
+    					if (tile.hasUnit() && !(tile.getUnit() instanceof Avatar)) {
+    						hasNonAvatarUnit = true;
+    						break;
+    					}
+    				}
+    				if (hasNonAvatarUnit) {
+    					playable.add(card);
+    				}
+    				
+    			}
+    			else {
     				playable.add(card);
     			}
     			
@@ -105,9 +121,15 @@ public class AIPlayer extends Player {
     		SundropElixir sundropElixir = new SundropElixir();
     		sundropElixir.play(gameState, out, highlightManager, this);
     	}
-    	else if (cardName.equals("Wraithling Swarm")) {
-            playAIWraithlingSwarm(gameState, out);
-        }
+    	// Play Beamshock (#29: Stun - the target cannot move or attack next turn
+    	else if (cardName.equals("Beamshock")) {
+    		Beamshock beamshock = new Beamshock();
+    		beamshock.play(gameState, out, highlightManager, this);
+    	}
+    	
+    	
+    	
+    	
     	// Added Unit Summoning logic for AI (Story Card 17)
         else {
             Tile targetTile = null;
@@ -228,48 +250,7 @@ public class AIPlayer extends Player {
     	hand.remove(card);
         }
     	 // end of playCard method
-    
-    private void playAIWraithlingSwarm(GameState gameState, ActorRef out) {
-        int summonedCount = 0;
-
-        for (int x = 1; x <= 9 && summonedCount < 3; x++) {
-            for (int y = 1; y <= 5 && summonedCount < 3; y++) {
-                Tile t = gameState.board.getTile(x, y);
-                if (t != null && !t.hasUnit()) {
-                	//Use an absolutely unique counter ID
-                	int uniqueId = aiUnitIdCounter++;
-
-                    Unit wraithling = BasicObjectBuilders.loadUnit(StaticConfFiles.wraithling, uniqueId, Unit.class);
-                    wraithling.setConfigFile(StaticConfFiles.wraithling);
-                    wraithling.setPlayer(gameState.player2);
-
-                    wraithling.setAttack(1);
-                    wraithling.setHealth(1);
-                    wraithling.setMaxHealth(1);
-
-                    wraithling.setPositionByTile(t);
-                    t.setUnit(wraithling);
-
-                    BasicCommands.playEffectAnimation(out, BasicObjectBuilders.loadEffect(StaticConfFiles.f1_summon), t);
-                    try { Thread.sleep(150); } catch (Exception e) {}
-
-                    BasicCommands.drawUnit(out, wraithling, t);
-                    try { Thread.sleep(150); } catch (Exception e) {}
-
-                    BasicCommands.setUnitAttack(out, wraithling, 1);
-                    try { Thread.sleep(100); } catch (Exception e) {}
-
-                    BasicCommands.setUnitHealth(out, wraithling, 1);
-                    try { Thread.sleep(100); } catch (Exception e) {}
-
-                    wraithling.setCanMove(false);
-                    wraithling.setCanAttack(false);
-
-                    summonedCount++;
-                }
-            }
-        }
-    }
+     
     // Implement the triggerAIOpeningGambit method for AIPlayer (Story 17) 
     private void triggerAIOpeningGambit(ActorRef out, GameState gameState, Unit summonedUnit, Card card) {
         if (card.getCardname().equals("Silverguard Squire")) {

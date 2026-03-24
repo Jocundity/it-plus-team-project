@@ -69,7 +69,7 @@ public class EndTurnClicked implements EventProcessor {
                             Unit u = tile.getUnit();
                             if (u.getPlayer() == gameState.player2) {
                                 // [Bug Fix] If the unit is stunned, it should lose its movement and attack capabilities for this turn, then have the stun status removed at the end of the turn. Otherwise, it should function normally.
-                                if (u.isStunned()) {
+                                if (u.getIsStunned()) {
                                     u.setCanMove(false);
                                     u.setCanAttack(false);
                                     u.setIsStunned(false); 
@@ -159,10 +159,11 @@ public class EndTurnClicked implements EventProcessor {
                                 Unit u = tile.getUnit();
                                 if (u.getPlayer() == gameState.player1) {
                                     // [Bug Fix] If the unit is stunned, it should lose its movement and attack capabilities for this turn, then have the stun status removed at the end of the turn. Otherwise, it should function normally.
-                                    if (u.isStunned()) {
+                                    if (u.getIsStunned()) {
                                         u.setCanMove(false);
                                         u.setCanAttack(false);
-                                        u.setIsStunned(false); 
+                                        u.setIsStunned(false);
+                                        BasicCommands.addPlayer1Notification(out, "Stunned units are no longer stunned.", 1);
                                     } else {
                                         u.setCanMove(true);
                                         u.setCanAttack(true);

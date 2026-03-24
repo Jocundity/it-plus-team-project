@@ -24,6 +24,7 @@ public class Player {
     private boolean hornEquipped = false;
     private int hornDurability = 0;
 
+
     // deck and hand management
     private Deck deck;
     private HandManager handManager;
@@ -136,4 +137,5 @@ public class Player {
     public Deck getDeck() { return deck; }
     public HandManager getHandManager() { return handManager; }
     public ArrayList<Card> getHand() {return (ArrayList<Card>) hand; }
+    
 }
