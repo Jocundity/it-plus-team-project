@@ -63,6 +63,27 @@ public class Avatar extends Unit {
             if (!(this.player instanceof AIPlayer)) {
                 BasicCommands.addPlayer1Notification(out,
                         "Horn durability: " + Math.max(newDurability, 0), 2);
+                
+             // Find an empty adjacent tile around player 1 avatar
+                if (this == null || this.getPosition() == null) {
+                    return;
+                }
+
+                int ax = this.getPosition().getTilex();
+                int ay = this.getPosition().getTiley();
+
+                int[][] directions = {
+                    {0, 1}, {0, -1}, {1, 0}, {-1, 0},
+                    {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+                };
+
+                for (int[] dir : directions) {
+                    Tile adj = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+                    if (adj != null && !adj.hasUnit()) {
+                        WraithlingManager.placeWraithling(gameState, out, adj, this.getPlayer());
+                        break;
+                    }
+                }
             }
 
             if (newDurability <= 0) {
@@ -201,5 +222,7 @@ public class Avatar extends Unit {
             }
         }
     }
+    
+
 
 }
