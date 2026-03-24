@@ -20,8 +20,7 @@ public class EndTurnClicked implements EventProcessor {
 
     @Override
     public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-@Override
-public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
+
     if (gameState.gameOver) return;
 
     if (gameState.player1 == null || gameState.player2 == null) {

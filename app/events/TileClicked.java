@@ -390,7 +390,7 @@ public class TileClicked implements EventProcessor {
 
                 // Story Card 20: trigger only if positive damage was actually dealt
                 if (target.getHealth() < oldTargetHealth) {
-                triggerUnitDealsDamage(attacker, target, gameState, out);
+                    triggerUnitDealsDamage(attacker, target, gameState, out);
                 }
 
                 // (Story Card 12) Counterattack
@@ -409,18 +409,15 @@ public class TileClicked implements EventProcessor {
                     }
 
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
-                    BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.idle);
-                }
                 }
 
-                BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
-            }
+                BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.idle);
 
                 attacker.setCanAttack(false);
                 attacker.setCanMove(false);
                 gameState.selectedTile = null;
                 return;
-            } // =========================
+            }
             // (Story Card 10) Move + Attack
             // =========================
             else if (enemy && attacker.getCanAttack() && attacker.getCanMove()) {
@@ -752,33 +749,7 @@ public class TileClicked implements EventProcessor {
         return hasAdjacentProvoke;
     }
         
-        /*if (target instanceof Avatar) {
-            return;
-        }
-        */
-
-        // Find an empty adjacent tile around player 1 avatar
-        Unit avatar = findAvatar(gameState, gameState.player1);
-        if (avatar == null || avatar.getPosition() == null) {
-            return;
-        }
-
-        int ax = avatar.getPosition().getTilex();
-        int ay = avatar.getPosition().getTiley();
-
-        int[][] directions = {
-            {0, 1}, {0, -1}, {1, 0}, {-1, 0},
-            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
-        };
-
-        for (int[] dir : directions) {
-            Tile adj = gameState.board.getTile(ax + dir[0], ay + dir[1]);
-            if (adj != null && !adj.hasUnit()) {
-                summonWraithlingAt(out, gameState, adj);
-                break;
-            }
-        }
-    }
+        
     // Story Card 17 Opening Gambit Logic
     private void triggerOpeningGambit(ActorRef out, GameState gameState, Unit summonedUnit, Card card) {
         String cardName = card.getCardname();
