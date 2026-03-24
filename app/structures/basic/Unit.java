@@ -510,4 +510,16 @@ public class Unit {
         	}
         }
     }
+
+    // (Story Card 24) Check if this unit has Provoke ability
+    public boolean hasProvoke() {
+        if (configFile == null) return false;
+
+        String config = configFile.toLowerCase();
+
+        return config.contains("swamp_entangler")
+            || config.contains("rock_pulveriser")
+            || config.contains("silverguard_knight")
+            || config.contains("ironcliff_guardian");
+    }
 }
