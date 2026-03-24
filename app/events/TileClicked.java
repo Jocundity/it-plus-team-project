@@ -556,6 +556,48 @@ public class TileClicked implements EventProcessor {
         int dy = Math.abs(a.getTiley() - b.getTiley());
         return Math.max(dx, dy) == 1; // include diagonal
     }
+    
+    // 👇👇👇 就在这里加这个方法 👇👇👇
+    private boolean isBlockedByProvoke(Tile attackerTile, Tile targetTile, GameState gameState) {
+    if (attackerTile == null || targetTile == null) return false;
+    if (!attackerTile.hasUnit() || !targetTile.hasUnit()) return false;
+
+    Unit attacker = attackerTile.getUnit();
+    Unit target = targetTile.getUnit();
+
+    int[][] directions = {
+        {0, 1}, {0, -1}, {1, 0}, {-1, 0},
+        {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+    };
+
+    boolean adjacentEnemyProvokeExists = false;
+
+    for (int[] dir : directions) {
+        Tile adjTile = gameState.board.getTile(
+            attackerTile.getTilex() + dir[0],
+            attackerTile.getTiley() + dir[1]
+        );
+
+        if (adjTile != null && adjTile.hasUnit()) {
+            Unit adjUnit = adjTile.getUnit();
+
+            boolean isEnemy = adjUnit.getPlayer() != attacker.getPlayer();
+            boolean hasProvoke = adjUnit.hasProvoke();
+
+            if (isEnemy && hasProvoke) {
+                adjacentEnemyProvokeExists = true;
+
+                // 如果当前攻击目标本身就是相邻的 Provoke 单位，则允许攻击
+                if (adjUnit == target) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    // 如果周围存在敌方 Provoke，但当前目标不是它们，则阻止这次攻击
+    return adjacentEnemyProvokeExists;
+}
 
  
     // Find the avatar unit belonging to the specified player
