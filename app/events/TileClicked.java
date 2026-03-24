@@ -377,7 +377,6 @@ public class TileClicked implements EventProcessor {
                 } catch (Exception e) {
                 }
                 target.decreaseHealth(gameState, out, attacker.getAttack());
-                triggerHornOnHitIfNeeded(out, gameState, attacker, target);
                 // (Story Card 12) Counterattack
                 if (target.getHealth() > 0) {
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.attack);
@@ -436,7 +435,7 @@ public class TileClicked implements EventProcessor {
                     } catch (Exception e) {
                     }
                     target.decreaseHealth(gameState, out, attacker.getAttack());
-                    triggerHornOnHitIfNeeded(out, gameState, attacker, target);
+                    
                     
                     // (Story Card 12) Counterattack after move
                     if (target.getHealth() > 0 && isAdjacent8(landingTile, clickedTile)) {
@@ -605,53 +604,6 @@ public class TileClicked implements EventProcessor {
         wraithling.setCanAttack(false);
     }
 
-    private void triggerHornOnHitIfNeeded(ActorRef out, GameState gameState, Unit attacker, Unit target) {
-        // Horn only applies to player 1 avatar
-        if (!(attacker instanceof Avatar)) {
-            return;
-        }
-        if (attacker.getPlayer() != gameState.player1) {
-            return;
-        }
-        if (!gameState.player1.isHornEquipped()) {
-            return;
-        }
-
-        // Horn only triggers when damaging an enemy NON-avatar unit
-        if (target == null) {
-            return;
-        }
-        if (target.getPlayer() == attacker.getPlayer()) {
-            return;
-        }
-        
-        /*if (target instanceof Avatar) {
-            return;
-        }
-        */
-
-        // Find an empty adjacent tile around player 1 avatar
-        Unit avatar = findAvatar(gameState, gameState.player1);
-        if (avatar == null || avatar.getPosition() == null) {
-            return;
-        }
-
-        int ax = avatar.getPosition().getTilex();
-        int ay = avatar.getPosition().getTiley();
-
-        int[][] directions = {
-            {0, 1}, {0, -1}, {1, 0}, {-1, 0},
-            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
-        };
-
-        for (int[] dir : directions) {
-            Tile adj = gameState.board.getTile(ax + dir[0], ay + dir[1]);
-            if (adj != null && !adj.hasUnit()) {
-                summonWraithlingAt(out, gameState, adj);
-                break;
-            }
-        }
-    }
     // Story Card 17 Opening Gambit Logic
     private void triggerOpeningGambit(ActorRef out, GameState gameState, Unit summonedUnit, Card card) {
         String cardName = card.getCardname();
