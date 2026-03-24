@@ -3,10 +3,15 @@ package events;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import akka.actor.ActorRef;
+import structures.basic.Player;
+import structures.basic.TargetingSystem;
+
+import java.util.ArrayList;
 import commands.BasicCommands;
 import structures.GameState;
 import structures.basic.Tile;
 import structures.basic.Card;
+import structures.basic.Avatar;
 
 /**
  * Indicates that the user has clicked an object on the game canvas, in this
@@ -43,6 +48,22 @@ public class CardClicked implements EventProcessor {
         Card clickedCard = gameState.player1.getHandManager().getHandCards().get(cardIndex);
         if (clickedCard == null) {
             return;
+        }
+        
+        // Allow user to deselect the card if they click it again
+        if (gameState.selectedCard != null && gameState.selectedCard.equals(clickedCard)) {
+        	gameState.selectedCard = null;
+            gameState.handPositionClicked = -1;
+            gameState.isSpellTargeting = false;
+            gameState.isUnitSummoning = false;
+            
+            // Rset board and card visuals to default state
+            gameState.highlightManager.clearHighlights(out);
+            BasicCommands.drawCard(out, clickedCard, handPosition, 0);
+            
+            BasicCommands.addPlayer1Notification(out, " Card selection cancelled", 2);
+            return;
+            
         }
 
         // (Story 32) Mana pre-check: Prevent casting/spawning if insufficient
@@ -85,7 +106,7 @@ public class CardClicked implements EventProcessor {
             gameState.highlightManager.clearHighlights(out);
             BasicCommands.addPlayer1Notification(out, "Spell Selected: " + cardName, 2);
 
-            if (cardName.equals("Dark Terminus") || cardName.equals("Beamshock")) {
+            if (cardName.equals("Dark Terminus")) {
 
                 // Check if the player has enough mana to play the card
                 if (gameState.player1.getMana() < clickedCard.getManacost()) {
@@ -103,8 +124,25 @@ public class CardClicked implements EventProcessor {
                     gameState.selectedTile = null;
                 }
 
-                // (Story 31) Highlight valid spell targets through HighlightManager
-                gameState.highlightManager.highlightSpellTargets(gameState, out);
+                // Do not allow highlighting of enemy avatar for Dark Terminus
+                if (cardName.equals("Dark Terminus")) {
+                	ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, gameState.player1);
+                	
+                	// Bug fix: Deselect card if avatar is the only enemy unit on board
+                	if (enemyTiles.size() <= 1) {
+                		BasicCommands.addPlayer1Notification(out, "No valid targets!", 2);
+                		BasicCommands.drawCard(out, clickedCard, handPosition, 0);
+                        gameState.selectedCard = null;
+                        gameState.isSpellTargeting = false;
+                        return;
+                	}
+                	
+                	gameState.highlightManager.highlightAllEnemyUnitTilesExceptAvatar(gameState, out, gameState.player1);	
+                } else {
+                	// (Story 31) Highlight valid spell targets through HighlightManager
+                    gameState.highlightManager.highlightSpellTargets(gameState, out);
+                }
+                
                 BasicCommands.addPlayer1Notification(out, "Select enemy target", 2);
             } // =====================================================================
             // Spell Targeting Logic: Wraithling Swarm
@@ -135,6 +173,12 @@ public class CardClicked implements EventProcessor {
             }
             
             else if (cardName.equals("Horn of the Forsaken")) {
+            	// Check if the player has enough mana to play the card
+                if (gameState.player1.getMana() < clickedCard.getManacost()) {
+                    BasicCommands.addPlayer1Notification(out, "Not enough mana!", 2);
+                    return;
+                }
+            	
                 gameState.handPositionClicked = handPosition;
                 gameState.highlightManager.highlightFriendlyAvatar(gameState, out); 
                 BasicCommands.addPlayer1Notification(out, "Select your Avatar to equip", 2);

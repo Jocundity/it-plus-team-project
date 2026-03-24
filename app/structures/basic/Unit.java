@@ -8,6 +8,7 @@ import utils.BasicObjectBuilders;
 import utils.StaticConfFiles;
 import akka.actor.ActorRef;
 import structures.GameState;
+import structures.basic.WraithlingManager;
 
 /**
  * This is a representation of a Unit on the game board. A unit has a unique id
@@ -186,18 +187,42 @@ public class Unit {
             }
 
             Tile deathTile = this.tile;
-            triggerUnitDeath(gameState, out);
+          
             BasicCommands.deleteUnit(out, this);
             try {
-                Thread.sleep(1000);
+                Thread.sleep(2000);
             } catch (Exception e) {
             }
+            
+            
+            /*
+            // Bug fix to make sure dead wraithlings are being removed from board
+            if (this.configFile != null && this.configFile.contains("wraithling")) {
+            	deathTile.setUnit(null);
+                BasicCommands.drawTile(out, deathTile, 0);
+                BasicCommands.deleteUnit(out, this);
+                
+                try {
+                    Thread.sleep(2000);
+                } catch (Exception e) {
+                }
+            }
+            */
+            
+           
 
             if (deathTile != null) {
                 deathTile.setUnit(null);
                 BasicCommands.drawTile(out, deathTile, 0);
-
+                
+                try {
+                    Thread.sleep(2000);
+                } catch (Exception e) {
+                }
             }
+            
+            // Trigger death abilities
+            triggerUnitDeath(gameState, out);
 
         } else {
             health = health - amount;
@@ -378,7 +403,7 @@ public class Unit {
     }
     // Getters and setters for isStunned
 
-    public boolean isStunned() {
+    public boolean getIsStunned() {
         return this.isStunned;
     }
 
@@ -417,55 +442,8 @@ public class Unit {
 
                             if (adj != null && !adj.hasUnit()) {
 
-                                int uniqueId = 8000 + (adj.getTilex() * 100) + adj.getTiley();
-
-                                Unit wraith = utils.BasicObjectBuilders.loadUnit(
-                                        utils.StaticConfFiles.wraithling,
-                                        uniqueId,
-                                        Unit.class
-                                );
-
-                                wraith.setConfigFile(utils.StaticConfFiles.wraithling);
-                                wraith.setPlayer(u.getPlayer());
-
-                                wraith.setAttack(1);
-                                wraith.setHealth(1);
-                                wraith.setMaxHealth(1);
-
-                                wraith.setPositionByTile(adj);
-                                adj.setUnit(wraith);
-
-                                BasicCommands.playEffectAnimation(
-                                        out,
-                                        utils.BasicObjectBuilders.loadEffect(utils.StaticConfFiles.f1_summon),
-                                        adj
-                                );
-                                try {
-                                    Thread.sleep(150);
-                                } catch (Exception e) {
-                                }
-
-                                BasicCommands.drawUnit(out, wraith, adj);
-                                try {
-                                    Thread.sleep(150);
-                                } catch (Exception e) {
-                                }
-
-                                BasicCommands.setUnitAttack(out, wraith, 1);
-                                try {
-                                    Thread.sleep(100);
-                                } catch (Exception e) {
-                                }
-
-                                BasicCommands.setUnitHealth(out, wraith, 1);
-                                try {
-                                    Thread.sleep(100);
-                                } catch (Exception e) {
-                                }
-
-                                wraith.setCanMove(false);
-                                wraith.setCanAttack(false);
-
+                            	WraithlingManager.placeWraithling(gameState, out, adj, u.getPlayer());
+                            	
                                 break;
                             }
                         } 
@@ -500,27 +478,36 @@ public class Unit {
 
                         // Apply 1 damage to enemy avatar
                         if (enemyAvatar != null && enemyAvatar.getHealth() > 0) {
-                            int newHp = enemyAvatar.getHealth() - 1;
-                            enemyAvatar.setHealth(Math.max(0, newHp));
-                            BasicCommands.setUnitHealth(out, enemyAvatar, enemyAvatar.getHealth());
-                            enemy.setHealth(enemyAvatar.getHealth()); // Sync Player object backend
-                            
-                            // Play hit animation for feedback
-                            BasicCommands.playUnitAnimation(out, enemyAvatar, UnitAnimationType.hit);
-                            try { Thread.sleep(300); } catch (Exception e){}
-                            BasicCommands.playUnitAnimation(out, enemyAvatar, UnitAnimationType.idle);
+                        	enemyAvatar.decreaseHealth(gameState, out, 1);
                         }
                         
                         // Apply 1 heal to owning avatar (do not exceed max health)
                         if (owningAvatar != null && owningAvatar.getHealth() < owningAvatar.getMaxHealth()) {
-                            int newHp = owningAvatar.getHealth() + 1;
-                            owningAvatar.setHealth(newHp);
-                            BasicCommands.setUnitHealth(out, owningAvatar, owningAvatar.getHealth());
-                            owner.setHealth(owningAvatar.getHealth()); // Sync Player object backend
+                        	owningAvatar.increaseHealth(out, 1);
+                        	
                         }
                     }
                 }
             }
+        }
+        
+     // Bug fix for units who do not return to idle animation
+        // because of Wraithling summoning
+        
+        for (Tile[] rowTiles : tiles) {
+        	for (Tile tile : rowTiles) {
+        		if (tile != null && tile.hasUnit()) {
+        			Unit unit = tile.getUnit();
+            		if (unit.getHealth() != 0) {
+            			BasicCommands.playUnitAnimation(out, unit, UnitAnimationType.idle);
+            			 try {
+                             Thread.sleep(100);
+                         } catch (Exception e) {
+                         }
+            		}
+                	  
+        		}
+        	}
         }
     }
 }
