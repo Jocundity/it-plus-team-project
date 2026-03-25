@@ -8,7 +8,7 @@ import akka.actor.ActorRef;
 import commands.BasicCommands;
 
 public class WraithlingManager {
-	static int uniqueId = 5000;
+	static int uniqueId = 8000;
 	
 	public WraithlingManager() {
 	}

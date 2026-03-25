@@ -75,7 +75,7 @@ public class AIPlayer extends Player {
     				}
     			} else if (card.getCardname().equals("Beamshock")){
     				// Do not add Beamshock if player avatar is the only enemy unit
-    				ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, gameState.player1);
+    				ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, this);
     				boolean hasNonAvatarUnit = false;
     				
     				for (Tile tile : enemyTiles) {
@@ -378,10 +378,16 @@ public class AIPlayer extends Player {
                 Unit target = adjTile.getUnit();
                 
                 if (target.getPlayer() != attacker.getPlayer()) {
+                	
+                	if (isBlockedByProvoke(attackerTile, adjTile, gameState)) {
+                        continue; 
+                    }
+                	
                     BasicCommands.playUnitAnimation(out, attacker, structures.basic.UnitAnimationType.attack);
                     try { Thread.sleep(1000); } catch (Exception e) {}
                     
                     target.decreaseHealth(gameState, out, attacker.getAttack());
+                    
                     attacker.setCanAttack(false);
                     attacker.setCanMove(false); 
                     
@@ -389,7 +395,15 @@ public class AIPlayer extends Player {
                     if (target.getHealth() > 0) {
                         BasicCommands.playUnitAnimation(out, target, structures.basic.UnitAnimationType.attack);
                         try { Thread.sleep(1000); } catch (Exception e) {}
+                        
+                        int oldAttackerHealth = attacker.getHealth();
+                        
                         attacker.decreaseHealth(gameState, out, target.getAttack());
+                        
+                        if (attacker.getHealth() < oldAttackerHealth) {
+                            triggerUnitDealsDamage(target, attacker, gameState, out);
+                        }
+                        
                         BasicCommands.playUnitAnimation(out, target, structures.basic.UnitAnimationType.idle);
                     }
                     return true;
@@ -458,4 +472,89 @@ public class AIPlayer extends Player {
         return gameState.board.getTile(unit.getPosition().getTilex(), unit.getPosition().getTiley());
     }
     
+    // (Story Card 20) Trigger when a unit successfully deals damage to an enemy unit
+    private void triggerUnitDealsDamage(Unit dealer, Unit target, GameState gameState, ActorRef out) {
+        if (dealer == null || target == null) return;
+        if (dealer.getPlayer() == target.getPlayer()) return;
+
+        // Check: If the damage dealer is Player 1's Avatar equipped with the Horn
+        if (dealer instanceof Avatar && dealer.getPlayer() == gameState.player1) {
+            
+            // Verify if the Horn artifact is currently equipped and has durability remaining
+            if (gameState.player1.isHornEquipped() && gameState.player1.getHornDurability() > 0) {
+                
+                // Find all unoccupied adjacent tiles to summon a Wraithling
+                java.util.List<Tile> emptyAdjTiles = new java.util.ArrayList<>();
+                int ax = dealer.getPosition().getTilex();
+                int ay = dealer.getPosition().getTiley();
+                int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                
+                for (int[] dir : directions) {
+                    try {
+                        Tile adjTile = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+                        // Ensure the tile is empty before adding it to the valid list
+                        if (adjTile != null && !adjTile.hasUnit()) {
+                            emptyAdjTiles.add(adjTile);
+                        }
+                    } catch (Exception e) {} // Safely ignore out-of-bounds array exceptions
+                }
+
+                // If valid empty tiles exist, randomly select one for the summon
+                if (!emptyAdjTiles.isEmpty()) {
+                    java.util.Collections.shuffle(emptyAdjTiles);
+                    Tile summonTile = emptyAdjTiles.get(0);
+                    
+                    // Call the manager to place the Wraithling on the board
+                    WraithlingManager.placeWraithling(gameState, out, summonTile, gameState.player1);
+                    BasicCommands.addPlayer1Notification(out, "Horn of the Forsaken triggers!", 2);
+                }
+            }
+        }
+    }
+    
+    private boolean isBlockedByProvoke(Tile attackerTile, Tile targetTile, GameState gameState) {
+        // Return false if either tile is null
+        if (attackerTile == null || targetTile == null) return false;
+        // Return false if either tile has no unit
+        if (!attackerTile.hasUnit() || !targetTile.hasUnit()) return false;
+
+        Unit attacker = attackerTile.getUnit();
+        Unit target = targetTile.getUnit();
+
+        // 8 directions for adjacent tile detection
+        int[][] directions = {
+            {0, 1}, {0, -1}, {1, 0}, {-1, 0},
+            {1, 1}, {1, -1}, {-1, 1}, {-1, -1}
+        };
+
+        boolean adjacentEnemyProvokeExists = false;
+
+        for (int[] dir : directions) {
+            try {
+                Tile adjTile = gameState.board.getTile(
+                    attackerTile.getTilex() + dir[0],
+                    attackerTile.getTiley() + dir[1]
+                );
+
+                if (adjTile != null && adjTile.hasUnit()) {
+                    Unit adjUnit = adjTile.getUnit();
+
+                    boolean isEnemy = adjUnit.getPlayer() != attacker.getPlayer();
+                    boolean hasProvoke = adjUnit.hasProvoke();
+
+                    if (isEnemy && hasProvoke) {
+                        adjacentEnemyProvokeExists = true;
+
+                        // Allow attack if the target is the adjacent provoke unit itself
+                        if (adjUnit == target) {
+                            return false;
+                        }
+                    }
+                }
+            } catch (Exception e) {} // Ignore out-of-bounds errors
+        }
+
+        // Block the attack if an enemy provoke exists but the target is not it
+        return adjacentEnemyProvokeExists;
+    }
 }
