@@ -12,8 +12,8 @@ public class TargetingSystem {
 		ArrayList<Tile> enemyTiles = new ArrayList<Tile>(); 
 		
 		// Loop through board to find tiles with enemy units
-		for (int x = 0; x < 9; x++) {
-			for (int y = 0; y < 5; y++) {
+		for (int x = 0; x < 10; x++) {
+		    for (int y = 0; y < 6; y++) {
 				Tile targetTile = gameState.board.getTile(x, y);
 				if (targetTile == null) continue;
 				
@@ -32,8 +32,8 @@ public class TargetingSystem {
 			ArrayList<Tile> friendlyTiles = new ArrayList<Tile>(); 
 			
 			// Loop through board to find tiles with enemy units
-			for (int x = 0; x < 9; x++) {
-				for (int y = 0; y < 5; y++) {
+			for (int x = 0; x < 10; x++) {
+			    for (int y = 0; y < 6; y++) {
 					Tile targetTile = gameState.board.getTile(x, y);
 					if (targetTile == null) continue;
 					

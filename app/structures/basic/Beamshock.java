@@ -18,7 +18,7 @@ public class Beamshock {
 	
 	public void play(GameState gameState, ActorRef out, HighlightManager highlightManager, Player player) {
 		// Get enemy units
-		ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, gameState.player1);
+		ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, player);
 		Tile targetTile = null;
 		int maxAttack = -1;
 		

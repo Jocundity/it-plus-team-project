@@ -362,6 +362,11 @@ public class TileClicked implements EventProcessor {
             Tile attackerTile = gameState.selectedTile;
             Unit attacker = attackerTile.getUnit();
             Unit target = clickedTile.getUnit();
+            
+            if (attacker.getPlayer() != gameState.player1) {
+                gameState.selectedTile = null;
+                return;
+            }
 
             boolean enemy = (target.getPlayer() != attacker.getPlayer());
             boolean adjacent = isAdjacent8(attackerTile, clickedTile);
@@ -384,6 +389,12 @@ public class TileClicked implements EventProcessor {
                 int oldTargetHealth = target.getHealth();
 
                 target.decreaseHealth(gameState, out, attacker.getAttack());
+                
+                // Trigger On Hit summon if attacker dealt damage to target
+                if (target.getHealth() < oldTargetHealth) {
+                    triggerUnitDealsDamage(attacker, target, gameState, out);
+                }
+                
                 // (Story Card 12) Counterattack
                 if (target.getHealth() > 0) {
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.attack);
@@ -391,7 +402,6 @@ public class TileClicked implements EventProcessor {
 
                     // Story Card 20: record attacker health before counterattack damage
                     int oldAttackerHealth = attacker.getHealth();
-
                     attacker.decreaseHealth(gameState, out, target.getAttack());
 
                     // Story Card 20: counterattack also counts as unit dealing damage
@@ -401,7 +411,7 @@ public class TileClicked implements EventProcessor {
 
                     BasicCommands.playUnitAnimation(out, target, UnitAnimationType.idle);
                 }
-
+                
                 BasicCommands.playUnitAnimation(out, attacker, UnitAnimationType.idle);
 
                 attacker.setCanAttack(false);
@@ -453,6 +463,10 @@ public class TileClicked implements EventProcessor {
 
                     target.decreaseHealth(gameState, out, attacker.getAttack());
                     
+                    // Trigger On Hit immediately when attack deals damage (attacker = attacker, target = victim)
+                    if (target.getHealth() < oldTargetHealth) {
+                        triggerUnitDealsDamage(attacker, target, gameState, out);
+                    }
                     
                     // (Story Card 12) Counterattack after move
                     if (target.getHealth() > 0 && isAdjacent8(landingTile, clickedTile)) {
@@ -465,6 +479,7 @@ public class TileClicked implements EventProcessor {
 
                     attacker.decreaseHealth(gameState, out, target.getAttack());
 
+                    
                     // Story Card 20: counterattack also counts as unit dealing damage
                     if (attacker.getHealth() < oldAttackerHealth) {
                         triggerUnitDealsDamage(target, attacker, gameState, out);
@@ -492,6 +507,12 @@ public class TileClicked implements EventProcessor {
 
             Tile startTile = gameState.selectedTile;
             Unit unit = startTile.getUnit();
+            
+            if (unit.getPlayer() != gameState.player1) {
+                gameState.selectedTile = null; 
+                BasicCommands.addPlayer1Notification(out, "You cannot move an enemy unit!", 2);
+                return;
+            }
 
             // Directly call the standard rule in HighlightManager to validate the move
             if (unit.getCanMove() && gameState.highlightManager.isValidMove(startTile.getTilex(), startTile.getTiley(), clickedTile.getTilex(), clickedTile.getTiley(), clickedTile, gameState)) {
@@ -542,6 +563,8 @@ public class TileClicked implements EventProcessor {
                 } else {
                 	BasicCommands.addPlayer1Notification(out, "This unit is stunned!", 2);
                 }
+            } else {
+                gameState.selectedTile = null;
             }
         } else {
             gameState.selectedTile = null;
@@ -557,7 +580,6 @@ public class TileClicked implements EventProcessor {
         return Math.max(dx, dy) == 1; // include diagonal
     }
     
-    // 👇👇👇 就在这里加这个方法 👇👇👇
     private boolean isBlockedByProvoke(Tile attackerTile, Tile targetTile, GameState gameState) {
     if (attackerTile == null || targetTile == null) return false;
     if (!attackerTile.hasUnit() || !targetTile.hasUnit()) return false;
@@ -587,7 +609,7 @@ public class TileClicked implements EventProcessor {
             if (isEnemy && hasProvoke) {
                 adjacentEnemyProvokeExists = true;
 
-                // 如果当前攻击目标本身就是相邻的 Provoke 单位，则允许攻击
+                // If the current attack target is itself an adjacent Provoke unit, the attack is permitted.
                 if (adjUnit == target) {
                     return false;
                 }
@@ -595,7 +617,7 @@ public class TileClicked implements EventProcessor {
         }
     }
 
-    // 如果周围存在敌方 Provoke，但当前目标不是它们，则阻止这次攻击
+    // If there are enemy Provoke units nearby but the current target is not them, block this attack
     return adjacentEnemyProvokeExists;
 }
 
@@ -677,7 +699,39 @@ public class TileClicked implements EventProcessor {
         if (dealer == null || target == null) return;
         if (dealer.getPlayer() == target.getPlayer()) return;
 
-        BasicCommands.addPlayer1Notification(out, "Unit Deals Damage triggered", 2);
+        // Check: If the damage dealer is Player 1's Avatar equipped with the Horn
+        if (dealer instanceof Avatar && dealer.getPlayer() == gameState.player1) {
+            
+            // Verify if the Horn artifact is currently equipped and has durability remaining
+            if (gameState.player1.isHornEquipped() && gameState.player1.getHornDurability() > 0) {
+                
+                // Find all unoccupied adjacent tiles to summon a Wraithling
+                java.util.List<Tile> emptyAdjTiles = new java.util.ArrayList<>();
+                int ax = dealer.getPosition().getTilex();
+                int ay = dealer.getPosition().getTiley();
+                int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                
+                for (int[] dir : directions) {
+                    try {
+                        Tile adjTile = gameState.board.getTile(ax + dir[0], ay + dir[1]);
+                        // Ensure the tile is empty before adding it to the valid list
+                        if (adjTile != null && !adjTile.hasUnit()) {
+                            emptyAdjTiles.add(adjTile);
+                        }
+                    } catch (Exception e) {} // Safely ignore out-of-bounds array exceptions
+                }
+
+                // If valid empty tiles exist, randomly select one for the summon
+                if (!emptyAdjTiles.isEmpty()) {
+                    java.util.Collections.shuffle(emptyAdjTiles);
+                    Tile summonTile = emptyAdjTiles.get(0);
+                    
+                    // Call the manager to place the Wraithling on the board
+                    WraithlingManager.placeWraithling(gameState, out, summonTile, gameState.player1);
+                    BasicCommands.addPlayer1Notification(out, "Horn of the Forsaken triggers!", 2);
+                }
+            }
+        }
     }
 
     // Story Card 17 Opening Gambit Logic
