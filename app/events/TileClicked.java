@@ -277,8 +277,6 @@ public class TileClicked implements EventProcessor {
                     BasicCommands.playUnitAnimation(out, targetUnit, structures.basic.UnitAnimationType.death);
                     
 
-                    clickedTile.setUnit(null);
-                    BasicCommands.deleteUnit(out, targetUnit);
                     BasicCommands.addPlayer1Notification(out, "Unit Destroyed!", 2);
 
                     WraithlingManager.placeWraithling(gameState, out, clickedTile, gameState.player1);
