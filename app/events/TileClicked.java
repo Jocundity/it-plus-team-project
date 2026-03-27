@@ -275,20 +275,14 @@ public class TileClicked implements EventProcessor {
 
                     targetUnit.setHealth(0);
                     BasicCommands.playUnitAnimation(out, targetUnit, structures.basic.UnitAnimationType.death);
-                    try {
-                        Thread.sleep(1000);
-                    } catch (Exception e) {
-                    }
+                    
 
                     clickedTile.setUnit(null);
                     BasicCommands.deleteUnit(out, targetUnit);
                     BasicCommands.addPlayer1Notification(out, "Unit Destroyed!", 2);
 
                     WraithlingManager.placeWraithling(gameState, out, clickedTile, gameState.player1);
-                    try {
-                        Thread.sleep(100);
-                    } catch (Exception e) {
-                    }
+                   
 
                     
                 } 
@@ -318,17 +312,7 @@ public class TileClicked implements EventProcessor {
             // Whether the spell was successfully cast or not, we exit spell targeting mode and reset the clicked card position
             gameState.isSpellTargeting = false;
             gameState.handPositionClicked = -1;
-
-            // Clear all highlights (including the red ones for spell targeting)
-            for (int x = 1; x <= cols; x++) {
-                for (int y = 1; y <= rows; y++) {
-                    Tile t = gameState.board.getTile(x, y);
-                    if (t != null) {
-                        BasicCommands.drawTile(out, t, 0);
-                    }
-                }
-            }
-
+            
             // Clear targeting highlights
             gameState.highlightManager.clearHighlights(out);
 
@@ -350,7 +334,6 @@ public class TileClicked implements EventProcessor {
             return;
         }
 
-        BasicCommands.addPlayer1Notification(out, "Clicked: " + tilex + ", " + tiley, 2);
 
         // =========================
         // (Story Card 9) Adjacent Attack
@@ -388,7 +371,11 @@ public class TileClicked implements EventProcessor {
                 // Story Card 20: record target health before damage
                 int oldTargetHealth = target.getHealth();
 
-                target.decreaseHealth(gameState, out, attacker.getAttack());
+                int damage = attacker.getAttack();
+
+                if (damage > 0) {
+                    target.decreaseHealth(gameState, out, damage);
+                }
                 
                 // Trigger On Hit summon if attacker dealt damage to target
                 if (target.getHealth() < oldTargetHealth) {
@@ -402,7 +389,11 @@ public class TileClicked implements EventProcessor {
 
                     // Story Card 20: record attacker health before counterattack damage
                     int oldAttackerHealth = attacker.getHealth();
-                    attacker.decreaseHealth(gameState, out, target.getAttack());
+                    int counterDamage = target.getAttack();
+
+                    if (counterDamage > 0) {
+                        attacker.decreaseHealth(gameState, out, counterDamage);
+                    }
 
                     // Story Card 20: counterattack also counts as unit dealing damage
                     if (attacker.getHealth() < oldAttackerHealth) {
@@ -461,7 +452,11 @@ public class TileClicked implements EventProcessor {
                     // Story Card 20: record target health before damage
                     int oldTargetHealth = target.getHealth();
 
-                    target.decreaseHealth(gameState, out, attacker.getAttack());
+                    int damage = attacker.getAttack();
+
+                    if (damage > 0) {
+                        target.decreaseHealth(gameState, out, damage);
+                    }
                     
                     // Trigger On Hit immediately when attack deals damage (attacker = attacker, target = victim)
                     if (target.getHealth() < oldTargetHealth) {
@@ -477,7 +472,11 @@ public class TileClicked implements EventProcessor {
                     // Story Card 20: record attacker health before counterattack damage
                     int oldAttackerHealth = attacker.getHealth();
 
-                    attacker.decreaseHealth(gameState, out, target.getAttack());
+                    int counterDamage = target.getAttack();
+
+                    if (counterDamage > 0) {
+                        attacker.decreaseHealth(gameState, out, counterDamage);
+                    }
 
                     
                     // Story Card 20: counterattack also counts as unit dealing damage
@@ -539,13 +538,6 @@ public class TileClicked implements EventProcessor {
 
         if (clickedTile.hasUnit()) {
             Unit unit = clickedTile.getUnit();
-
-            // --- DEBUG LINES ---
-            String debugMsg = String.format("Tile: %d,%d | Unit: %d,%d",
-                    clickedTile.getTilex(), clickedTile.getTiley(),
-                    unit.getPosition().getTilex(), unit.getPosition().getTiley());
-            BasicCommands.addPlayer1Notification(out, debugMsg, 2);
-            // -------------------
 
             if (unit.getPlayer() == gameState.player1) {
 

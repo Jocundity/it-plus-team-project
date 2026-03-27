@@ -195,22 +195,6 @@ public class Unit {
             }
             
             
-            /*
-            // Bug fix to make sure dead wraithlings are being removed from board
-            if (this.configFile != null && this.configFile.contains("wraithling")) {
-            	deathTile.setUnit(null);
-                BasicCommands.drawTile(out, deathTile, 0);
-                BasicCommands.deleteUnit(out, this);
-                
-                try {
-                    Thread.sleep(2000);
-                } catch (Exception e) {
-                }
-            }
-            */
-            
-           
-
             if (deathTile != null) {
                 deathTile.setUnit(null);
                 BasicCommands.drawTile(out, deathTile, 0);
