@@ -335,6 +335,12 @@ public class AIPlayer extends Player {
                     if (tile != null && tile.hasUnit() && tile.getUnit().getPlayer() == gameState.player2) {
                         Unit aiUnit = tile.getUnit();
                         
+                        // Do not use normal logic for Young Flamewing
+                        if (aiUnit.getConfigFile() != null && aiUnit.getConfigFile().toLowerCase().contains("flamewing")) {
+                            handleYoungFlamewingMoveAndAttack(gameState, out, tile, aiUnit);
+                            continue;
+                        }
+                        
                         // 1. Try attacking an adjacent enemy first
                         if (aiUnit.getCanAttack()) {
                             boolean attacked = tryAttackAdjacentEnemy(out, gameState, tile, aiUnit);
@@ -556,5 +562,113 @@ public class AIPlayer extends Player {
 
         // Block the attack if an enemy provoke exists but the target is not it
         return adjacentEnemyProvokeExists;
+    }
+    
+    // Story Card #24 (Unit Ability: Flying)
+    // Allow unit to move to any unit on board
+    private void handleYoungFlamewingMoveAndAttack(GameState gameState, ActorRef out, Tile currentTile, Unit unit) {
+    	if (!unit.getCanMove()) {
+    		return;
+    	}
+    	    	
+    	ArrayList<Tile> emptyTiles = new ArrayList<Tile>();
+    	Tile destinationTile = null;
+    	
+    	for (int row = 1; row <= 5; row++) {
+    		for (int col = 1; col <= 9; col++) {
+    			Tile tile = gameState.board.getTile(col, row);
+    			if (tile != null && !tile.hasUnit()) {
+    				emptyTiles.add(tile);
+    			}
+    		}
+    	}
+    	
+    	if (emptyTiles.isEmpty()) {
+    		return;
+    	}
+    	
+    	// Get enemy tiles
+    	ArrayList<Tile> enemyTiles = TargetingSystem.getEnemyUnitTiles(gameState, unit.getPlayer());
+    	Tile chosenEnemyTile = null;
+    	
+    	// Choose to go after killable units first
+    	for (Tile tile : enemyTiles) {
+    		Unit enemy = tile.getUnit();
+    		if (enemy != null && enemy.getHealth() <= unit.getAttack()) {
+    			chosenEnemyTile = tile;
+    			break;
+    		}
+    	}
+    	
+    	// Go after player's avatar if there are no killable units
+    	if (chosenEnemyTile == null) {
+    		for (Tile tile : enemyTiles) {
+        		if (tile.getUnit() instanceof Avatar) {
+        			chosenEnemyTile = tile;
+        			break;
+        		}
+        	}
+    	}
+    	
+    	// Move to open tile next to enemy if possible
+    	if (chosenEnemyTile != null) {
+    		int enemyX = chosenEnemyTile.getTilex();
+    		int enemyY = chosenEnemyTile.getTiley();
+    		
+    		Tile direction;
+            
+    		
+            if ((direction = gameState.board.getTile(enemyX - 1, enemyY)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile left of enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX + 1, enemyY)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile right of enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX, enemyY - 1)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile above enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX, enemyY + 1)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile below enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX - 1, enemyY - 1)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile upper left of enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX + 1, enemyY - 1)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile upper right of enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX - 1, enemyY + 1)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile lower left of enemy
+            }
+            else if ((direction = gameState.board.getTile(enemyX + 1, enemyY + 1)) != null && !direction.hasUnit()) {
+                destinationTile = direction; // Tile lower right of enemy
+            }
+    	}
+    	
+    	// If not possible to get next to chosen enemy, choose any open tile
+    	if (destinationTile == null && chosenEnemyTile != null) {
+    		for (Tile tile : emptyTiles) {
+    			destinationTile = tile;
+    			break;
+    		}
+    		
+    	}
+    	
+    	// Move to destination tile
+    	if (destinationTile != null) {
+    		BasicCommands.moveUnitToTile(out, unit, destinationTile);
+            destinationTile.setUnit(unit);
+            currentTile.setUnit(null);
+            unit.setPositionByTile(destinationTile);
+
+            try { Thread.sleep(2500); } catch (Exception e) {}
+
+            unit.setCanMove(false);
+    	}
+        
+        // Attack if possible
+        if (unit.getCanAttack()) {
+            tryAttackAdjacentEnemy(out, gameState, destinationTile, unit);
+        }
+    	
     }
 }

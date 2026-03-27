@@ -57,23 +57,26 @@ public class Avatar extends Unit {
         // Horn of the Forsaken / artifact robustness:
         // whenever the player's avatar takes damage, reduce durability by 1
         if (this.player.isHornEquipped()) {
-            int newDurability = this.player.getHornDurability() - 1;
-            this.player.setHornDurability(newDurability);
-
-            if (!(this.player instanceof AIPlayer)) {
-                BasicCommands.addPlayer1Notification(out,
-                        "Horn durability: " + Math.max(newDurability, 0), 2);
-
-            if (newDurability <= 0) {
-                this.player.setHornEquipped(false);
-                this.player.setHornDurability(0);
-
+        	if (amount >= 1) {
+        		int newDurability = this.player.getHornDurability() - 1;
+                this.player.setHornDurability(newDurability);
+                
                 if (!(this.player instanceof AIPlayer)) {
                     BasicCommands.addPlayer1Notification(out,
-                            "Horn of the Forsaken destroyed", 2);
+                            "Horn durability: " + Math.max(newDurability, 0), 2);
+
+                if (newDurability <= 0) {
+                    this.player.setHornEquipped(false);
+                    this.player.setHornDurability(0);
+
+                    if (!(this.player instanceof AIPlayer)) {
+                        BasicCommands.addPlayer1Notification(out,
+                                "Horn of the Forsaken destroyed", 2);
+                    }
                 }
-            }
-            }
+                }
+        	}
+            
         }
     }
 
