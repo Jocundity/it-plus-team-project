@@ -276,6 +276,10 @@ public class TileClicked implements EventProcessor {
                     targetUnit.setHealth(0);
                     BasicCommands.playUnitAnimation(out, targetUnit, structures.basic.UnitAnimationType.death);
                     
+                    try { Thread.sleep(1000); } catch (InterruptedException e) {}
+                    BasicCommands.deleteUnit(out, targetUnit); 
+                    clickedTile.setUnit(null);
+                    
 
                     BasicCommands.addPlayer1Notification(out, "Unit Destroyed!", 2);
 
